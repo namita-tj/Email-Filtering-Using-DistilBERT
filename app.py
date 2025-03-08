@@ -1,19 +1,38 @@
-from flask import Flask, request, jsonify
-from transformers import TFAutoModelForSequenceClassification, AutoTokenizer
+import boto3
+import os
 import tensorflow as tf
+from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
+from flask import Flask, request, jsonify
 
-# Initialize Flask app
+# AWS S3 Setup
+S3_BUCKET_NAME = "spam-detection-model-storage"
+MODEL_DIR = "spam_detection_model"
+
+# Ensure directory exists
+os.makedirs(MODEL_DIR, exist_ok=True)
+
+# Download model from S3 if not available locally
+if not os.path.exists(f"{MODEL_DIR}/tf_model.h5"):
+    print("Downloading model from S3...")
+    s3 = boto3.client("s3")
+
+    for obj in s3.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=MODEL_DIR)["Contents"]:
+        file_path = obj["Key"]
+        local_path = os.path.join(MODEL_DIR, file_path.split("/")[-1])
+        s3.download_file(S3_BUCKET_NAME, file_path, local_path)
+
+    print("Model downloaded successfully!")
+
+# Load TensorFlow model and tokenizer
+model = TFAutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
+
+# Flask app
 app = Flask(__name__)
-
-# Load trained spam detection model
-model = TFAutoModelForSequenceClassification.from_pretrained("spam_detection_model")
-tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-
 
 @app.route("/")
 def home():
     return jsonify({"message": "Spam Detection API is running!"})
-
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -34,7 +53,5 @@ def predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# Run Flask app locally
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
