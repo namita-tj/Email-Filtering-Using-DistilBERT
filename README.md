@@ -1,20 +1,39 @@
-# Spam Detection API
+# 📧 Email Spam Detection API
 
-A Flask-based API for detecting spam emails using a pre-trained Transformer model from Hugging Face.
+## 🚀 Introduction
+This project is an **AI-powered email spam detection API** that classifies emails as **spam** or **ham** using **BERT-based NLP models**.  
+It is deployed as a **Flask REST API** on **AWS EC2** and loads the trained model from **AWS S3**.
 
-## Features
-- Classifies emails as "spam" or "ham".
-- Easy-to-use RESTful API.
-- Downloads the model from AWS S3 if not available locally.
+## 🛠️ Features
+- **Real-time spam detection** with a REST API.
+- **Uses pre-trained BERT-based Transformer model**.
+- **Flask API with JSON request-response structure**.
+- **AWS EC2 deployment with model storage in S3**.
+- **Supports Docker & Gunicorn for production deployment**.
 
-## Setup
+---
 
-### Prerequisites
-- Python 3.8 or higher
-- AWS CLI (for S3 access, if needed)
 
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/spam-detection.git
-   cd spam-detection
+---
+
+## 🖥️ **Installation**
+### 🔹 Prerequisites
+- Python 3.8+
+- `pip` installed
+- AWS CLI configured (for model loading)
+- Virtual environment (recommended)
+
+### 🔹 Setup
+
+# Clone the repository
+git clone https://github.com/your-username/EmailSpamDetection.git
+cd EmailSpamDetection
+
+# Create and activate virtual environment
+python -m venv myenv
+source myenv/bin/activate  # (On Windows use `myenv\Scripts\activate`)
+
+# Install dependencies
+pip install -r requirements.txt
+
+
