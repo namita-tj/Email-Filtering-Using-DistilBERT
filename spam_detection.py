@@ -12,10 +12,10 @@ import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 # ✅ NLTK Setup
-#nltk.download('wordnet')
-#nltk.download('omw-1.4')
-#nltk.download('punkt')
-#nltk.download('averaged_perceptron_tagger')
+nltk.download('wordnet')
+nltk.download('omw-1.4')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
 
 # ✅ Text Cleaning
 def clean_text(text):
@@ -116,5 +116,16 @@ print("\nClassification Report:")
 print(classification_report(y_true, y_pred, target_names=["ham", "spam"]))
 
 # ✅ Save Model
-model.save_pretrained("spam_detection_model")
+# Save in TensorFlow's recommended format instead of HDF5 (.h5)
+model.save("spam_detection_model", save_format="tf")
+
 print("\nModel saved successfully!")
+
+# Verify files
+import os
+
+model_dir = "spam_detection_model"
+if os.path.exists(model_dir):
+    print("Files in model directory:", os.listdir(model_dir))
+else:
+    print("Model directory not found.")
