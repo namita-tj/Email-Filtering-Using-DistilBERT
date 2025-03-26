@@ -1,101 +1,72 @@
-# 📧 Email Spam Detection Model
+# 📧 Email Spam Detection System
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![Scikit-learn](https://img.shields.io/badge/Scikit--learn-1.0%2B-orange)
-![AWS](https://img.shields.io/badge/AWS-S3%2C_EC2-yellow)
-![NLP](https://img.shields.io/badge/NLP-spaCy%2Fnltk-green)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-2.12%2B-orange)
+![Transformers](https://img.shields.io/badge/🤗_Transformers-4.30%2B-yellow)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.95%2B-green)
 
 ## 🌟 Overview
-A machine learning system that classifies emails as spam or ham (non-spam) using:
-- **Natural Language Processing (NLP)** for text preprocessing
-- **Supervised learning** (Logistic Regression/Random Forest)
-- **AWS S3** for scalable model storage
-- **Git** for version control (without large file bloat)
+A hybrid spam detection system combining:
+- **DistilBERT** for deep learning classification
+- **Rule-based checks** for common spam patterns
+- **GPT-3.5 fallback** for low-confidence predictions
+- **FastAPI** REST endpoint for production deployment
 
-## 🛠️ Tools Used
-| Category       | Tools                                                                 |
-|----------------|-----------------------------------------------------------------------|
-| Core ML        | `scikit-learn`, `nltk`, `spaCy`, `pandas`, `numpy`                   |
-| Cloud Storage  | **AWS S3** (`spam-detection-model-storage`)                          |
-| Development   | `Python 3.8+`, `Jupyter Notebook`, `VS Code`                         |
-| Version Control| `Git` (with `.gitignore` for models)                                 |
+## 🛠️ Core Components
 
-## 🔧 Setup
+### 1. Model Training (`spam_detection.py`)
 
-### 1. Install Dependencies
+Key Features:
+- Uses DistilBERT (lightweight BERT variant)
+- Processes email text with regex cleaning
+- Handles class imbalance with sklearn's class_weight
+- Saves TensorFlow SavedModel format
+
+
+### 2. Prediction API (app.py)
+Key Features:
+- FastAPI endpoint with /predict route
+- Hybrid decision system:
+  1. DistilBERT primary prediction
+  2. GPT-3.5 fallback for uncertain cases
+  3. Rule-based keyword matching as backup
+- Cached LLM queries with @lru_cache
+- Detailed logging and health checks
+
+  ## 📦 Installation
 ```bash
+git clone https://github.com/your-repo/email-spam-detection
+cd email-spam-detection
 pip install -r requirements.txt
 ```
 
-### 2. Configure AWS Credentials 
+## 🚀 Usage
+Training the Model
 ```bash
-aws configure
-```
-Or set environment variables:
-```
-export AWS_ACCESS_KEY_ID="YOUR_ACCESS_KEY"
-export AWS_SECRET_ACCESS_KEY="YOUR_SECRET_KEY"
-export AWS_DEFAULT_REGION="us-east-1"
-```
+python spam_detection.py
+  ```
 
-## 📂 Downloading the Model
-Model path: s3://spam-detection-model-storage/spam_detection_model/
-
-### Option 1: AWS CLI
+Running the API
 ```bash
-aws s3 cp s3://spam-detection-model-storage/spam_detection_model/latest_model.pkl ./models/
+python app.py
+```
+Then visit http://localhost:8080/docs for interactive docs.
+
+## 🔧 Configuration
+Add to .env:
+```ini
+OPENAI_API_KEY=sk-your-key-here  # For GPT-3.5 fallback
 ```
 
-### Option 2: Python (boto3)
-```bash
-import boto3
-s3 = boto3.client('s3')
-s3.download_file(
-    Bucket="spam-detection-model-storage",
-    Key="spam_detection_model/latest_model.pkl",
-    Filename="./models/latest_model.pkl"
-)
+## 📂 File Structure
+```
+.
+├── app.py                    # FastAPI application
+├── spam_detection.py         # Model training script
+├── spam_detection_model/     # Saved TensorFlow model
+├── requirements.txt          # Python dependencies
+└── README.md                # This file
 ```
 
-### Option 3: Pre-Signed URL
-Run this to generate a temporary link:
-```bash
-import boto3
-s3 = boto3.client('s3')
-url = s3.generate_presigned_url(
-    'get_object',
-    Params={
-        'Bucket': 'spam-detection-model-storage',
-        'Key': 'spam_detection_model/latest_model.pkl'
-    },
-    ExpiresIn=604800  # 7 days
-)
-print("Download URL:", url)
-```
-
-## 🔄 Updating the Model
-```bash
-aws s3 cp ./new_model.pkl s3://spam-detection-model-storage/spam_detection_model/latest_model.pkl
-```
-
-## 📁 S3 Structure
-```bash
-spam_detection_model/
-├── latest_model.pkl
-├── v1.0_model.pkl
-└── training_data.csv
-```
-
-## 🔒 Access
-Requires s3:GetObject permissions
-
-Add this to your .gitignore:
-```bash
-/models/
-```
-
-## 🚀 Deployment
-Reference directly in AWS services:
-```bash
-model_path = "s3://spam-detection-model-storage/spam_detection_model/latest_model.pkl"
-```
+## 📜 License
+MIT License - For research and educational use only.
