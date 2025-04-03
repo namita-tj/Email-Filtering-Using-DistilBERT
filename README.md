@@ -1,4 +1,4 @@
-# 📧 Email Spam Detection System
+# 📧 Email Filtering System using DistilBERT
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-2.12%2B-orange)
@@ -14,7 +14,7 @@ A hybrid spam detection system combining:
 
 ## 🛠️ Core Components
 
-### 1. Model Training (`spam_detection.py`)
+### 1. Model Training (`model.py`)
 
 Key Features:
 - Uses DistilBERT (lightweight BERT variant)
@@ -35,15 +35,15 @@ Key Features:
 
   ## 📦 Installation
 ```bash
-git clone https://github.com/your-repo/email-spam-detection
-cd email-spam-detection
+git clone https://github.com/your-repo/Email-Filtering-Using-DistilBERT
+cd Email-Filtering-Using-DistilBERT
 pip install -r requirements.txt
 ```
 
 ## 🚀 Usage
 Training the Model
 ```bash
-python spam_detection.py
+python model.py
   ```
 
 Running the API
@@ -62,7 +62,7 @@ OPENAI_API_KEY=sk-your-key-here  # For GPT-3.5 fallback
 ```
 .
 ├── app.py                    # FastAPI application
-├── spam_detection.py         # Model training script
+├── model.py         # Model training script
 ├── spam_detection_model/     # Saved TensorFlow model
 ├── requirements.txt          # Python dependencies
 └── README.md                # This file
