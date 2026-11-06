@@ -1,0 +1,44 @@
+{
+  "dataset": "SetFit/enron_spam",
+  "train_size": 28495,
+  "validation_size": 3167,
+  "accuracy": 0.9946321439848437,
+  "f1_spam": 0.9945320038597619,
+  "confusion_matrix": [
+    [
+      1604,
+      10
+    ],
+    [
+      7,
+      1546
+    ]
+  ],
+  "report": {
+    "ham": {
+      "precision": 0.9956548727498448,
+      "recall": 0.9938042131350682,
+      "f1-score": 0.9947286821705427,
+      "support": 1614.0
+    },
+    "spam": {
+      "precision": 0.993573264781491,
+      "recall": 0.995492594977463,
+      "f1-score": 0.9945320038597619,
+      "support": 1553.0
+    },
+    "accuracy": 0.9946321439848437,
+    "macro avg": {
+      "precision": 0.9946140687656679,
+      "recall": 0.9946484040562655,
+      "f1-score": 0.9946303430151523,
+      "support": 3167.0
+    },
+    "weighted avg": {
+      "precision": 0.9946341158269356,
+      "recall": 0.9946321439848437,
+      "f1-score": 0.9946322371384484,
+      "support": 3167.0
+    }
+  }
+}

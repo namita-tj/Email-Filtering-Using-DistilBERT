@@ -1,0 +1,23 @@
+[project]
+name = "email-filtering-using-distilbert"
+version = "2.0.0"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+# Colab notebooks: shell commands and step-by-step cells, not library code.
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "N", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["app", "training", "evaluation"]
+# Need TensorFlow/PyTorch, the dataset or a trained model; app/classifier.py is smoke-tested
+# separately and tests/test_local_llm.py covers app/local_llm.py where PyTorch is installed.
+omit = ["app/classifier.py", "app/local_llm.py", "training/train.py", "evaluation/run.py"]
