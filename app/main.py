@@ -7,7 +7,7 @@ Docs:         http://localhost:8000/docs
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
@@ -29,11 +29,31 @@ class PredictRequest(BaseModel):
         return value
 
 
+EXPLAIN_STEPS = 32
+
+
+class WordWeight(BaseModel):
+    word: str
+    weight: float = Field(description="Positive pushes towards spam, negative towards ham")
+
+
+class ModelExplanation(BaseModel):
+    method: str
+    spam_probability: float
+    convergence_delta: float = Field(
+        description="Integrated Gradients completeness error; small values mean a reliable explanation"
+    )
+    words: list[WordWeight] = Field(description="Most influential words, strongest first")
+
+
 class PredictResponse(BaseModel):
     label: str = Field(description="spam or ham")
     source: str = Field(description="Which stage decided: model, llm or rules")
     spam_probability: float = Field(description="DistilBERT spam probability")
     reason: str | None = Field(default=None, description="Explanation from the LLM or rules")
+    explanation: ModelExplanation | None = Field(
+        default=None, description="Word attributions for the model score; only with ?explain=true"
+    )
 
 
 def build_spam_filter(settings: Settings) -> SpamFilter:
@@ -91,19 +111,35 @@ def create_app(spam_filter: SpamFilter | None = None) -> FastAPI:
         }
 
     @app.post("/predict", response_model=PredictResponse)
-    def predict(request: PredictRequest) -> PredictResponse:
-        prediction = app.state.spam_filter.classify(request.subject, request.text)
+    def predict(
+        request: PredictRequest,
+        explain: bool = Query(False, description="Add word attributions (slower, ~1-3 s on CPU)"),
+        top_k: int = Query(10, ge=1, le=50, description="Number of words in the explanation"),
+    ) -> PredictResponse:
+        spam_filter = app.state.spam_filter
+        if explain and not spam_filter.can_explain:
+            raise HTTPException(status_code=501, detail="Explanations are not available")
+
+        prediction = spam_filter.classify(request.subject, request.text)
         logger.info(
-            "label=%s source=%s p=%.3f",
+            "label=%s source=%s p=%.3f explain=%s",
             prediction.label,
             prediction.source,
             prediction.spam_probability,
+            explain,
         )
+
+        explanation = None
+        if explain:
+            result = spam_filter.explain(request.subject, request.text, steps=EXPLAIN_STEPS)
+            explanation = ModelExplanation(**result.to_dict(top_k=top_k))
+
         return PredictResponse(
             label=prediction.label,
             source=prediction.source,
             spam_probability=round(prediction.spam_probability, 4),
             reason=prediction.reason,
+            explanation=explanation,
         )
 
     return app

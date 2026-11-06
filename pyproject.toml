@@ -15,6 +15,6 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.coverage.run]
-source = ["app", "training"]
-# Need TensorFlow and a trained model: exercised by the Docker smoke test, not unit tests.
-omit = ["app/classifier.py", "training/train.py"]
+source = ["app", "training", "evaluation"]
+# Need TensorFlow, the dataset or a trained model; app/classifier.py is smoke-tested separately.
+omit = ["app/classifier.py", "training/train.py", "training/data.py", "evaluation/run.py"]

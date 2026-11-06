@@ -37,3 +37,22 @@ def fake_model():
 @pytest.fixture
 def fake_llm():
     return FakeLLM
+
+
+class FakeExplainableModel(FakeModel):
+    """Adds an `explain` method that returns fixed word weights."""
+
+    def explain(self, text: str, steps: int = 32):
+        from app.explain import Explanation, WordAttribution
+
+        words = [WordAttribution(w, 0.0) for w in text.split()]
+        if words:
+            words[0] = WordAttribution(words[0].word, 0.4)
+        if len(words) > 1:
+            words[-1] = WordAttribution(words[-1].word, -0.2)
+        return Explanation("integrated_gradients", self.probability, words, 0.01)
+
+
+@pytest.fixture
+def fake_explainable_model():
+    return FakeExplainableModel

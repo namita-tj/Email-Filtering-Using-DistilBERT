@@ -16,12 +16,11 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 import numpy as np  # noqa: E402
 import tensorflow as tf  # noqa: E402
-from datasets import load_dataset  # noqa: E402
 from sklearn.metrics import classification_report, confusion_matrix, f1_score  # noqa: E402
 from sklearn.utils.class_weight import compute_class_weight  # noqa: E402
 from transformers import AutoTokenizer, TFAutoModelForSequenceClassification  # noqa: E402
 
-from app.preprocessing import combine_subject_and_body  # noqa: E402
+from training.data import SEED, load_splits  # noqa: E402
 from training.thresholds import choose_thresholds  # noqa: E402
 
 MODEL_DIR = Path(os.getenv("MODEL_DIR", "spam_detection_model"))
@@ -31,18 +30,9 @@ BATCH_SIZE = 16
 EPOCHS = 5
 LEARNING_RATE = 5e-5
 TARGET_PRECISION = 0.99
-SEED = 42
 
 
-def prepare(example):
-    example["combined_text"] = combine_subject_and_body(example["title"], example["text"])
-    example["label"] = 1 if example["type"] == "spam" else 0
-    return example
-
-
-dataset = load_dataset("TrainingDataPro/email-spam-classification").map(prepare)
-if "validation" not in dataset:
-    dataset = dataset["train"].train_test_split(test_size=0.2, seed=SEED)
+dataset = load_splits()
 
 labels = [ex["label"] for ex in dataset["train"]]
 weights = compute_class_weight("balanced", classes=np.unique(labels), y=labels)

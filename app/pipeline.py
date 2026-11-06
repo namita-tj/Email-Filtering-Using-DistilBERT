@@ -49,3 +49,13 @@ class SpamFilter:
 
         rules = classify_with_rules(f"{subject}\n{body}")
         return Prediction(rules.label, "rules", p, rules.reason)
+
+    @property
+    def can_explain(self) -> bool:
+        return callable(getattr(self.model, "explain", None))
+
+    def explain(self, subject: str, body: str, steps: int = 32):
+        """Word attributions for the model's spam probability (Integrated Gradients)."""
+        if not self.can_explain:
+            raise NotImplementedError("The loaded model does not support explanations")
+        return self.model.explain(combine_subject_and_body(subject, body), steps=steps)
