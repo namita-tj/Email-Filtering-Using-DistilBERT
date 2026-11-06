@@ -16,5 +16,6 @@ pythonpath = ["."]
 
 [tool.coverage.run]
 source = ["app", "training", "evaluation"]
-# Need TensorFlow, the dataset or a trained model; app/classifier.py is smoke-tested separately.
-omit = ["app/classifier.py", "training/train.py", "evaluation/run.py"]
+# Need TensorFlow/PyTorch, the dataset or a trained model; app/classifier.py is smoke-tested
+# separately and tests/test_local_llm.py covers app/local_llm.py where PyTorch is installed.
+omit = ["app/classifier.py", "app/local_llm.py", "training/train.py", "evaluation/run.py"]

@@ -51,7 +51,7 @@ def test_classical_models_learn_the_toy_task():
 def test_llm_runs_on_subset_with_cost_and_failures_counted_as_ham():
     results = run_benchmark(_rows(40), {"Toy": _rows(20, offset=1000)}, llm=FakeLLM(), llm_samples=20)
     llm = results["approaches"][-1]
-    assert llm["kind"] == "zero-shot LLM" and llm["full"] is None
+    assert llm["kind"] == "zero-shot LLM (API)" and llm["full"] is None
     assert llm["llm_subset"]["Toy"]["n"] == 20
     assert llm["usage"]["calls"] == 19  # one call failed
     assert llm["usage"]["cost_usd"] > 0
@@ -67,3 +67,48 @@ def test_markdown_has_both_tables_and_cost():
 def test_llm_approach_predicts_labels():
     rows = _rows(4, offset=0)
     assert llm_approach(FakeLLM()).predict(rows) == [1, 0, 1, 0]
+
+
+class BrokenLLM(FakeLLM):
+    def classify(self, subject, body):
+        try:
+            raise ValueError("insufficient_quota")
+        except ValueError as exc:
+            raise RuntimeError("LLM request failed") from exc
+
+
+def test_llm_that_always_fails_is_reported_as_failed_not_as_zeros():
+    results = run_benchmark(_rows(40), {"Toy": _rows(10, offset=1000)}, llm=BrokenLLM(), llm_samples=5)
+    llm = results["approaches"][-1]
+    assert llm["failed_calls"] == 5
+    assert "insufficient_quota" in llm["first_error"]
+    md = to_markdown(results)
+    assert "| failed | failed | failed |" in md
+    assert "5 LLM calls failed" in md
+
+
+class FakeLocalLLM(FakeLLM):
+    """Local models get the whole list at once (batched on the GPU)."""
+
+    name = "Qwen/Qwen2.5-3B-Instruct"
+
+    def __init__(self):
+        super().__init__()
+        self.batches = 0
+
+    def classify_many(self, rows):
+        self.batches += 1
+        self.usage["calls"] += len(rows)
+        return [SimpleNamespace(label="spam" if "free" in r["body"] else "ham") for r in rows]
+
+
+def test_local_llm_is_batched_named_after_the_model_and_free():
+    local = FakeLocalLLM()
+    results = run_benchmark(_rows(40), {"Toy": _rows(20, offset=1000)}, llm=local, llm_samples=20)
+    row = results["approaches"][-1]
+    assert row["name"] == "Qwen2.5-3B-Instruct, zero-shot (local, no training)"
+    assert row["kind"] == "zero-shot LLM (local)"
+    assert row["usage"]["cost_usd"] == 0.0 and row["usage"]["local"] is True
+    assert row["llm_subset"]["Toy"]["accuracy"] == 1.0
+    assert local.batches == 1  # one call for the whole subset, no threads
+    assert "ran locally on the GPU: no API cost" in to_markdown(results)

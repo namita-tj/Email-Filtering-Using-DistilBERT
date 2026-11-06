@@ -7,6 +7,7 @@ each test set; every other model is also scored on that subset for a fair compar
 
     python -m training.benchmark                        # all approaches (LLM if configured)
     python -m training.benchmark --no-llm               # skip the LLM
+    python -m training.benchmark --local-llm Qwen/Qwen2.5-3B-Instruct   # free local LLM on a GPU
     python -m training.benchmark --enron-csv FILE.csv --no-phishing --no-distilbert   # CPU-only check
 
 Writes reports/benchmark.json and reports/benchmark.md.
@@ -14,12 +15,13 @@ Writes reports/benchmark.json and reports/benchmark.md.
 
 import argparse
 import json
+import os
 import random
 import sys
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from evaluation.metrics import classification_metrics, llm_cost
@@ -36,6 +38,8 @@ class Approach:
     kind: str  # "classical", "fine-tuned transformer", "zero-shot LLM"
     predict: Callable[[list[dict]], list[int]]  # rows -> 0/1 labels
     train_seconds: float = 0.0
+    # Calls that raised instead of answering (zero-shot LLM only): count and first message.
+    failures: dict = field(default_factory=lambda: {"count": 0, "first_error": None})
 
 
 def _texts(rows: list[dict]) -> list[str]:
@@ -102,24 +106,52 @@ def distilbert_approach(model_dir: Path) -> Approach:
     )
 
 
-def llm_approach(llm, workers: int = 8) -> Approach:
-    """Zero-shot: the project's LLM fallback prompt applied to every email."""
+def llm_approach(
+    llm,
+    name: str = "GPT-4o-mini, zero-shot (no training)",
+    kind: str = "zero-shot LLM (API)",
+    workers: int = 8,
+) -> Approach:
+    """Zero-shot: the project's LLM fallback prompt applied to every email.
+
+    API models are called in parallel threads; local models that offer
+    `classify_many` get the whole list at once and batch it on the GPU.
+    """
+    approach = Approach(name, kind, lambda rows: [])
+
+    def record(exc: Exception) -> None:
+        if approach.failures["first_error"] is None:
+            cause = f" (cause: {exc.__cause__!r})" if exc.__cause__ else ""
+            approach.failures["first_error"] = f"{exc!r}{cause}"[:500]
 
     def classify(row: dict) -> int | None:
         try:
             return int(llm.classify(row["subject"], row["body"]).label == "spam")
-        except Exception:  # noqa: BLE001 - counted as a failure, not a crash
+        except Exception as exc:  # noqa: BLE001 - recorded as a failure, not a crash
+            record(exc)
             return None
 
     def predict(rows: list[dict]) -> list[int]:
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            results = list(pool.map(classify, rows))
-        failures = sum(r is None for r in results)
-        if failures:
-            print(f"  LLM: {failures} of {len(rows)} calls failed; counted as 'ham'")
+        if hasattr(llm, "classify_many"):
+            results = []
+            for answer in llm.classify_many(rows):
+                if isinstance(answer, Exception):
+                    record(answer)
+                    results.append(None)
+                else:
+                    results.append(int(answer.label == "spam"))
+        else:
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                results = list(pool.map(classify, rows))
+        failed = sum(r is None for r in results)
+        approach.failures["count"] += failed
+        if failed:
+            first = approach.failures["first_error"]
+            print(f"  LLM: {failed} of {len(rows)} calls failed. First error: {first}")
         return [r if r is not None else 0 for r in results]
 
-    return Approach("GPT-4o-mini, zero-shot (no training)", "zero-shot LLM", predict)
+    approach.predict = predict
+    return approach
 
 
 # ── Scoring ───────────────────────────────────────────────────────────────────
@@ -164,7 +196,14 @@ def run_benchmark(
         results["approaches"].append(entry)
 
     if llm is not None:
-        approach = llm_approach(llm)
+        local = hasattr(llm, "classify_many")
+        approach = (
+            llm_approach(
+                llm, f"{llm.name.split('/')[-1]}, zero-shot (local, no training)", "zero-shot LLM (local)"
+            )
+            if local
+            else llm_approach(llm)
+        )
         print(f"Scoring {approach.name} on {sum(len(s) for s in subsets.values())} emails...")
         entry = {
             "name": approach.name,
@@ -172,14 +211,21 @@ def run_benchmark(
             "train_seconds": 0.0,
             "full": None,
             "llm_subset": {n: score(approach, rows) for n, rows in subsets.items()},
+            "failed_calls": approach.failures["count"],
+            "first_error": approach.failures["first_error"],
         }
         usage = llm.usage
-        cost = llm_cost(usage["prompt_tokens"], usage["completion_tokens"], *GPT_4O_MINI_PRICES)
+        cost = (
+            0.0
+            if local
+            else llm_cost(usage["prompt_tokens"], usage["completion_tokens"], *GPT_4O_MINI_PRICES)
+        )
         n_emails = sum(len(s) for s in subsets.values())
         entry["usage"] = {
             **usage,
             "cost_usd": round(cost, 4),
             "cost_per_1000_emails_usd": round(1000 * cost / max(n_emails, 1), 4),
+            "local": local,
         }
         results["approaches"].append(entry)
     return results
@@ -219,6 +265,13 @@ def to_markdown(results: dict) -> str:
         "| " + " | ".join(["---"] * 2 + ["---:"] * (3 * len(names))) + " |",
     ]
     for a in results["approaches"]:
+        if a.get("failed_calls"):
+            total = sum(m["n"] for m in a["llm_subset"].values())
+            if a["failed_calls"] >= total:
+                lines.append(
+                    f"| {a['name']} | {a['kind']} | " + " | ".join(["failed"] * 3 * len(names)) + " |"
+                )
+                continue
         cells = []
         for n in names:
             m = a["llm_subset"][n]
@@ -228,11 +281,20 @@ def to_markdown(results: dict) -> str:
     llm = next((a for a in results["approaches"] if "usage" in a), None)
     if llm:
         u = llm["usage"]
-        lines += [
-            "",
-            f"LLM cost: ${u['cost_usd']:.4f} for {u['calls']} calls "
-            f"(${u['cost_per_1000_emails_usd']:.4f} per 1,000 emails).",
-        ]
+        if u.get("local"):
+            lines += ["", f"The LLM ran locally on the GPU: no API cost ({u['calls']} emails)."]
+        else:
+            lines += [
+                "",
+                f"LLM cost: ${u['cost_usd']:.4f} for {u['calls']} calls "
+                f"(${u['cost_per_1000_emails_usd']:.4f} per 1,000 emails).",
+            ]
+        if llm.get("failed_calls"):
+            lines += [
+                "",
+                f"**{llm['failed_calls']} LLM calls failed** and were counted as ham. "
+                f"First error: `{llm['first_error']}`",
+            ]
     return "\n".join(lines) + "\n"
 
 
@@ -254,9 +316,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-distilbert", action="store_true")
     parser.add_argument("--no-llm", action="store_true")
     parser.add_argument("--llm-samples", type=int, default=200, help="LLM emails per test set")
+    parser.add_argument(
+        "--local-llm",
+        metavar="MODEL",
+        help="Open-weight Hugging Face model to run locally instead of the API",
+    )
     parser.add_argument("--model-dir", type=Path, default=Path("spam_detection_model"))
     parser.add_argument("--reports", type=Path, default=Path("reports"))
     args = parser.parse_args(argv)
+
+    # TensorFlow (DistilBERT) otherwise reserves almost all GPU memory up front,
+    # leaving nothing for a PyTorch local LLM in the same process.
+    os.environ.setdefault("TF_FORCE_GPU_ALLOW_GROWTH", "true")
 
     if args.enron_csv:
         from training.baseline import splits_from_csv
@@ -272,7 +343,12 @@ def main(argv: list[str] | None = None) -> int:
         test_sets["Modern phishing"] = phishing_sample()
 
     llm = None
-    if not args.no_llm:
+    if args.local_llm and not args.no_llm:
+        from app.local_llm import LocalLLMClassifier
+
+        print(f"Loading local model {args.local_llm}...")
+        llm = LocalLLMClassifier(args.local_llm)
+    elif not args.no_llm:
         from app.config import Settings
         from app.llm import build_llm_classifier
 
