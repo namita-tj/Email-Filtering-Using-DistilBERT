@@ -1,0 +1,6 @@
+# Training and benchmark only. Install on top of ../requirements.txt
+# Tested on Google Colab: Python 3.13, TensorFlow 2.20, T4 GPU.
+datasets==3.3.2
+scikit-learn==1.6.1
+# NumPy is left to TensorFlow's own constraint (1.26 has no Python 3.13 build).
+# The local-LLM benchmark (app/local_llm.py) also needs PyTorch, preinstalled on Colab.

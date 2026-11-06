@@ -1,0 +1,7 @@
+{
+  "low": 0.5707,
+  "high": 0.5707,
+  "target": 0.99,
+  "uncertain_share": 0.0,
+  "calibrated": true
+}
