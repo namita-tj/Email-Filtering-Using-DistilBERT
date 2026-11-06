@@ -82,6 +82,12 @@ KPIS: tuple[KPI, ...] = (
         "The explained words alone should nearly keep the prediction."),
     KPI("shortcut_candidates", "Explainability", "Shortcut words to review", None, False, "",
         "Each flagged word is checked by hand before release."),
+    # Does it generalise beyond the training data? Tracked, no target: the honest
+    # answer for a model trained on 2000s spam is what this measures.
+    KPI("phishing_recall", "Robustness", "Modern phishing caught (out of distribution)", None, True, "%",
+        "Spam has changed since the Enron era; this shows how much that matters."),
+    KPI("phishing_false_positive_rate", "Robustness", "Safe modern emails marked as spam", None, False,
+        "%", "False alarms on present-day legitimate email."),
 )
 
 
@@ -93,8 +99,13 @@ def _get(data: dict | None, *path):
     return data
 
 
-def collect(training: dict | None, system: dict | None, explainability: dict | None) -> dict:
-    """Pulls each KPI's value out of the three result files. Missing parts become None."""
+def collect(
+    training: dict | None,
+    system: dict | None,
+    explainability: dict | None,
+    phishing: dict | None = None,
+) -> dict:
+    """Pulls each KPI's value out of the result files. Missing parts become None."""
     faith5 = _get(explainability, "faithfulness", "5")
     comp, rand = _get(faith5, "comprehensiveness"), _get(faith5, "random_comprehensiveness")
     candidates = _get(explainability, "shortcut_audit", "shortcut_candidates")
@@ -117,6 +128,8 @@ def collect(training: dict | None, system: dict | None, explainability: dict | N
         "beats_random_share": _get(faith5, "beats_random_share"),
         "sufficiency": _get(faith5, "sufficiency"),
         "shortcut_candidates": len(candidates) if candidates is not None else None,
+        "phishing_recall": _get(phishing, "hybrid", "recall"),
+        "phishing_false_positive_rate": _get(phishing, "hybrid", "false_positive_rate"),
     }
 
 

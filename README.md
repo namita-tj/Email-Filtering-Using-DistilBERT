@@ -21,7 +21,8 @@ themselves tested for faithfulness.
 - **Hybrid decision chain.** DistilBERT → Azure OpenAI / OpenAI for uncertain emails → keyword rules if the LLM is unavailable.
 - **Calibrated routing.** The confidence band is chosen on validation data, so the LLM is only paid for where the model is unsure.
 - **Explainable AI.** Word-level Integrated Gradients via `?explain=true`, checked with ERASER faithfulness tests and a shortcut audit.
-- **Measured against 15 KPIs.** Quality, LLM value, latency, cost and explanation faithfulness, with a pass/miss report.
+- **Measured against 17 KPIs.** Quality, LLM value, latency, cost, explanation faithfulness and robustness to modern phishing, with a pass/miss report.
+- **Trained and tested on public data.** Enron-Spam (33.7k emails) with a held-out test set, plus a separate modern phishing dataset for out-of-distribution testing.
 - **Production basics.** FastAPI with validation, Docker, CI with lint, tests and an 80% coverage gate, image published to GHCR.
 
 ## How it works
@@ -36,9 +37,9 @@ flowchart LR
     C -->|no / error| R[Keyword rules<br/>source=rules]
 ```
 
-- **Confidence band.** `low` and `high` are chosen during training so that the
-  model's own decisions reach 99% precision for spam and for ham on the
-  validation set. Only emails in between cost an LLM call.
+- **Confidence band.** `low` and `high` are chosen on the validation split so that
+  the model's own decisions reach 99% precision for spam and for ham. Only emails
+  in between cost an LLM call. The test split is never used for tuning.
 - **LLM fallback.** Structured JSON output, temperature 0, timeout and retries,
   and a cache, so a repeated email is never paid for twice.
 - **Rules.** A small set of phishing and scam patterns; two or more matches mark
@@ -73,7 +74,10 @@ The explanations are tested, not trusted:
 `python -m evaluation.run` measures every KPI and writes a pass/miss report to
 [`reports/kpis.md`](reports/kpis.md). The false positive rate matters most: a
 legitimate email lost in the spam folder costs far more than one spam email that
-slips through. Targets are starting points and are reviewed after the first run.
+slips through. All quality KPIs are measured on the held-out Enron-Spam test set.
+Targets are starting points and are reviewed after the first run. The robustness
+KPIs have no target on purpose: they show how well a model trained on 2000s spam
+copes with today's phishing.
 
 | Group | KPI | Target | Result |
 | --- | --- | ---: | ---: |
@@ -92,6 +96,8 @@ slips through. Targets are starting points and are reviewed after the first run.
 | Explainability | Explanations beating random (top-5) | ≥ 80% | _pending_ |
 | Explainability | Top-5 sufficiency | ≤ 0.20 | _pending_ |
 | Explainability | Shortcut words | reviewed | _pending_ |
+| Robustness | Modern phishing caught (out of distribution) | tracked | _pending_ |
+| Robustness | Safe modern emails marked as spam | tracked | _pending_ |
 
 Detailed reports: [`reports/kpis.md`](reports/kpis.md) ·
 [`reports/explainability.md`](reports/explainability.md) ·
@@ -108,13 +114,16 @@ cp .env.example .env          # add your credentials
 **1. Train** (a GPU helps; Google Colab works well):
 ```bash
 pip install -r requirements.txt -r training/requirements.txt
-python -m training.train
+python -m training.train                  # full Enron-Spam training set
+TRAIN_LIMIT=2000 python -m training.train # quick trial run
 ```
-Saves the model, `metrics.json` and `thresholds.json` to `spam_detection_model/`.
+Downloads Enron-Spam from Hugging Face and saves the model, `metrics.json` and
+`thresholds.json` to `spam_detection_model/`. `MAX_LENGTH` (default 256 tokens)
+and `EPOCHS` (default 2) can be set the same way.
 
 **2. Evaluate** against the KPIs (writes `reports/` and the README image):
 ```bash
-python -m evaluation.run                  # --no-llm skips API calls
+python -m evaluation.run --phishing       # add --no-llm to skip API calls
 python -m evaluation.run --fail-on-miss   # exit code 1 if a KPI misses, for pipelines
 ```
 
@@ -214,7 +223,7 @@ app/                FastAPI service
 training/
   train.py          fine-tuning, metrics, threshold selection
   thresholds.py     confidence band selection
-  data.py           dataset loading and the shared split
+  data.py           Enron-Spam and phishing loaders, train/validation/test split
 evaluation/
   run.py            one command: system + explainability + KPI report
   system.py         end-to-end quality, LLM routing, latency, cost
@@ -233,10 +242,15 @@ tests/              unit and API tests
 Python · TensorFlow · Hugging Face Transformers · FastAPI · Pydantic · Azure OpenAI / OpenAI ·
 AWS S3 · Docker · GitHub Actions · pytest · Ruff
 
-## Dataset
+## Datasets
 
-[TrainingDataPro/email-spam-classification](https://huggingface.co/datasets/TrainingDataPro/email-spam-classification)
-on Hugging Face, split 80/20 into training and validation with a fixed seed.
+| Use | Dataset | Size | Notes |
+| --- | --- | ---: | --- |
+| Train, validation, test | [Enron-Spam](https://huggingface.co/datasets/SetFit/enron_spam) (Metsis et al., 2006) | 31.7k train, 2k test | Real spam and business email with subject and body. 10% of the train split is held out for validation. |
+| Out-of-distribution test | [Phishing Email Detection](https://huggingface.co/datasets/zefang-liu/phishing-email-dataset) (Kaggle, mirrored on Hugging Face) | 18.7k | Modern phishing and safe emails, body only. Never used for training. LGPL-3.0. |
+
+Empty emails and placeholder texts such as "empty" or "null" are removed, and
+very long emails are cut at 20,000 characters, the same limit the API uses.
 
 ## Author
 
