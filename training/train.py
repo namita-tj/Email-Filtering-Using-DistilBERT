@@ -24,6 +24,8 @@ import os
 from pathlib import Path
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+# Hugging Face TF models need Keras 2 (the tf_keras package); TensorFlow 2.16+ defaults to Keras 3.
+os.environ.setdefault("TF_USE_LEGACY_KERAS", "1")
 
 import numpy as np  # noqa: E402
 import tensorflow as tf  # noqa: E402

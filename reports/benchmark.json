@@ -1,0 +1,300 @@
+{
+  "test_sets": {
+    "Enron": 2000,
+    "Modern phishing": 2000
+  },
+  "llm_subset_size": {
+    "Enron": 200,
+    "Modern phishing": 200
+  },
+  "approaches": [
+    {
+      "name": "Naive Bayes (word + bigram counts)",
+      "kind": "classical",
+      "train_seconds": 15.8,
+      "full": {
+        "Enron": {
+          "n": 2000,
+          "tp": 995,
+          "fp": 8,
+          "tn": 984,
+          "fn": 13,
+          "accuracy": 0.9895,
+          "precision": 0.9920239282153539,
+          "recall": 0.9871031746031746,
+          "f1": 0.989557434112382,
+          "false_positive_rate": 0.008064516129032258,
+          "ms_per_email": 0.563
+        },
+        "Modern phishing": {
+          "n": 2000,
+          "tp": 763,
+          "fp": 286,
+          "tn": 945,
+          "fn": 6,
+          "accuracy": 0.854,
+          "precision": 0.7273593898951383,
+          "recall": 0.9921976592977894,
+          "f1": 0.8393839383938394,
+          "false_positive_rate": 0.2323314378554021,
+          "ms_per_email": 0.619
+        }
+      },
+      "llm_subset": {
+        "Enron": {
+          "n": 200,
+          "tp": 104,
+          "fp": 3,
+          "tn": 93,
+          "fn": 0,
+          "accuracy": 0.985,
+          "precision": 0.9719626168224299,
+          "recall": 1.0,
+          "f1": 0.985781990521327,
+          "false_positive_rate": 0.03125,
+          "ms_per_email": 0.434
+        },
+        "Modern phishing": {
+          "n": 200,
+          "tp": 78,
+          "fp": 25,
+          "tn": 96,
+          "fn": 1,
+          "accuracy": 0.87,
+          "precision": 0.7572815533980582,
+          "recall": 0.9873417721518988,
+          "f1": 0.8571428571428571,
+          "false_positive_rate": 0.2066115702479339,
+          "ms_per_email": 0.434
+        }
+      }
+    },
+    {
+      "name": "Linear SVM (TF-IDF)",
+      "kind": "classical",
+      "train_seconds": 17.1,
+      "full": {
+        "Enron": {
+          "n": 2000,
+          "tp": 1002,
+          "fp": 16,
+          "tn": 976,
+          "fn": 6,
+          "accuracy": 0.989,
+          "precision": 0.9842829076620825,
+          "recall": 0.9940476190476191,
+          "f1": 0.9891411648568608,
+          "false_positive_rate": 0.016129032258064516,
+          "ms_per_email": 0.364
+        },
+        "Modern phishing": {
+          "n": 2000,
+          "tp": 766,
+          "fp": 310,
+          "tn": 921,
+          "fn": 3,
+          "accuracy": 0.8435,
+          "precision": 0.7118959107806692,
+          "recall": 0.9960988296488946,
+          "f1": 0.8303523035230354,
+          "false_positive_rate": 0.2518277822908205,
+          "ms_per_email": 0.417
+        }
+      },
+      "llm_subset": {
+        "Enron": {
+          "n": 200,
+          "tp": 104,
+          "fp": 2,
+          "tn": 94,
+          "fn": 0,
+          "accuracy": 0.99,
+          "precision": 0.9811320754716981,
+          "recall": 1.0,
+          "f1": 0.9904761904761905,
+          "false_positive_rate": 0.020833333333333332,
+          "ms_per_email": 0.383
+        },
+        "Modern phishing": {
+          "n": 200,
+          "tp": 78,
+          "fp": 24,
+          "tn": 97,
+          "fn": 1,
+          "accuracy": 0.875,
+          "precision": 0.7647058823529411,
+          "recall": 0.9873417721518988,
+          "f1": 0.861878453038674,
+          "false_positive_rate": 0.19834710743801653,
+          "ms_per_email": 0.426
+        }
+      }
+    },
+    {
+      "name": "Logistic regression (TF-IDF), project baseline",
+      "kind": "classical",
+      "train_seconds": 17.6,
+      "full": {
+        "Enron": {
+          "n": 2000,
+          "tp": 999,
+          "fp": 19,
+          "tn": 973,
+          "fn": 9,
+          "accuracy": 0.986,
+          "precision": 0.981335952848723,
+          "recall": 0.9910714285714286,
+          "f1": 0.9861796643632775,
+          "false_positive_rate": 0.019153225806451613,
+          "ms_per_email": 0.354
+        },
+        "Modern phishing": {
+          "n": 2000,
+          "tp": 765,
+          "fp": 278,
+          "tn": 953,
+          "fn": 4,
+          "accuracy": 0.859,
+          "precision": 0.7334611697027804,
+          "recall": 0.9947984395318595,
+          "f1": 0.8443708609271522,
+          "false_positive_rate": 0.2258326563769293,
+          "ms_per_email": 0.398
+        }
+      },
+      "llm_subset": {
+        "Enron": {
+          "n": 200,
+          "tp": 103,
+          "fp": 3,
+          "tn": 93,
+          "fn": 1,
+          "accuracy": 0.98,
+          "precision": 0.9716981132075472,
+          "recall": 0.9903846153846154,
+          "f1": 0.9809523809523809,
+          "false_positive_rate": 0.03125,
+          "ms_per_email": 0.351
+        },
+        "Modern phishing": {
+          "n": 200,
+          "tp": 78,
+          "fp": 22,
+          "tn": 99,
+          "fn": 1,
+          "accuracy": 0.885,
+          "precision": 0.78,
+          "recall": 0.9873417721518988,
+          "f1": 0.8715083798882681,
+          "false_positive_rate": 0.18181818181818182,
+          "ms_per_email": 0.402
+        }
+      }
+    },
+    {
+      "name": "DistilBERT, fine-tuned (this project)",
+      "kind": "fine-tuned transformer",
+      "train_seconds": 0.0,
+      "full": {
+        "Enron": {
+          "n": 2000,
+          "tp": 1000,
+          "fp": 9,
+          "tn": 983,
+          "fn": 8,
+          "accuracy": 0.9915,
+          "precision": 0.9910802775024777,
+          "recall": 0.9920634920634921,
+          "f1": 0.9915716410510661,
+          "false_positive_rate": 0.009072580645161291,
+          "ms_per_email": 10.355
+        },
+        "Modern phishing": {
+          "n": 2000,
+          "tp": 766,
+          "fp": 460,
+          "tn": 771,
+          "fn": 3,
+          "accuracy": 0.7685,
+          "precision": 0.6247960848287113,
+          "recall": 0.9960988296488946,
+          "f1": 0.7679197994987469,
+          "false_positive_rate": 0.3736799350121852,
+          "ms_per_email": 9.913
+        }
+      },
+      "llm_subset": {
+        "Enron": {
+          "n": 200,
+          "tp": 103,
+          "fp": 2,
+          "tn": 94,
+          "fn": 1,
+          "accuracy": 0.985,
+          "precision": 0.9809523809523809,
+          "recall": 0.9903846153846154,
+          "f1": 0.985645933014354,
+          "false_positive_rate": 0.020833333333333332,
+          "ms_per_email": 9.715
+        },
+        "Modern phishing": {
+          "n": 200,
+          "tp": 78,
+          "fp": 46,
+          "tn": 75,
+          "fn": 1,
+          "accuracy": 0.765,
+          "precision": 0.6290322580645161,
+          "recall": 0.9873417721518988,
+          "f1": 0.7684729064039408,
+          "false_positive_rate": 0.38016528925619836,
+          "ms_per_email": 9.838
+        }
+      }
+    },
+    {
+      "name": "Qwen2.5-3B-Instruct, zero-shot (local, no training)",
+      "kind": "zero-shot LLM (local)",
+      "train_seconds": 0.0,
+      "full": null,
+      "llm_subset": {
+        "Enron": {
+          "n": 200,
+          "tp": 103,
+          "fp": 45,
+          "tn": 51,
+          "fn": 1,
+          "accuracy": 0.77,
+          "precision": 0.6959459459459459,
+          "recall": 0.9903846153846154,
+          "f1": 0.8174603174603174,
+          "false_positive_rate": 0.46875,
+          "ms_per_email": 494.312
+        },
+        "Modern phishing": {
+          "n": 200,
+          "tp": 77,
+          "fp": 90,
+          "tn": 31,
+          "fn": 2,
+          "accuracy": 0.54,
+          "precision": 0.46107784431137727,
+          "recall": 0.9746835443037974,
+          "f1": 0.6260162601626016,
+          "false_positive_rate": 0.743801652892562,
+          "ms_per_email": 454.915
+        }
+      },
+      "failed_calls": 0,
+      "first_error": null,
+      "usage": {
+        "calls": 400,
+        "prompt_tokens": 160554,
+        "completion_tokens": 11897,
+        "cost_usd": 0.0,
+        "cost_per_1000_emails_usd": 0.0,
+        "local": true
+      }
+    }
+  ]
+}

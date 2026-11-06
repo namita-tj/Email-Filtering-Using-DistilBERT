@@ -5,9 +5,14 @@ without it.
 """
 
 import json
+import os
 from pathlib import Path
 
 from app.explain import Explanation, merge_wordpieces
+
+# Hugging Face TF models need Keras 2 (the tf_keras package); TensorFlow 2.16+ defaults to Keras 3.
+# Must be set before TensorFlow is first imported.
+os.environ.setdefault("TF_USE_LEGACY_KERAS", "1")
 
 DEFAULT_MAX_LENGTH = 512
 
