@@ -5,10 +5,10 @@ import xml.etree.ElementTree as ET
 import pytest
 
 from app.explain import WordAttribution as W
+from evaluation.explainability import pick_example, stratified_sample
 from evaluation.faithfulness import score_example, summarize, top_indices
 from evaluation.render import render_svg
 from evaluation.report import to_markdown
-from evaluation.run import pick_example, stratified_sample
 from evaluation.shortcut_audit import aggregate, audit
 
 SPAM_WORDS = {"win", "prize", "verify"}

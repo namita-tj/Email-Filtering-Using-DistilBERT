@@ -46,6 +46,8 @@ class LLMClassifier:
         self._client = client
         self._model = model
         self._cached_classify = lru_cache(maxsize=cache_size)(self._classify_uncached)
+        # Running totals for cost tracking (calls that reached the API).
+        self.usage = {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0}
 
     def classify(self, subject: str, body: str) -> LLMResult:
         return self._cached_classify(subject, body[:MAX_EMAIL_CHARS])
@@ -63,6 +65,11 @@ class LLMClassifier:
             )
         except Exception as exc:
             raise LLMError(f"LLM request failed: {type(exc).__name__}") from exc
+        self.usage["calls"] += 1
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            self.usage["prompt_tokens"] += getattr(usage, "prompt_tokens", 0) or 0
+            self.usage["completion_tokens"] += getattr(usage, "completion_tokens", 0) or 0
         return parse_response(response.choices[0].message.content)
 
 

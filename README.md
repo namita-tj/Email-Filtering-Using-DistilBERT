@@ -61,23 +61,44 @@ trusting them:
   one class of this dataset, or stopwords and fragments among the most
   influential words. Flagged words are reviewed by hand.
 
-## Results
+## KPIs
 
-Filled in by `python -m training.train`, which writes `metrics.json` and
-`thresholds.json` next to the model.
+`python -m evaluation.run` measures every KPI and writes a pass/miss report to
+[`reports/kpis.md`](reports/kpis.md). Targets are starting points for a
+production filter and are reviewed after the first full run.
 
-| Metric (validation set) | Value |
+| Group | KPI | Target | Why |
+| --- | --- | ---: | --- |
+| Quality | Legitimate emails marked as spam (false positive rate) | ≤ 1% | Losing a real email is the costliest error |
+| Quality | Spam caught (recall) | ≥ 95% | Spam that never reaches the inbox |
+| Quality | F1, full system / model alone | ≥ 95% | Balance of precision and recall |
+| Hybrid design | Accuracy gain from the LLM on uncertain emails | ≥ 0 pp | The LLM must earn its cost |
+| Hybrid design | Emails sent to the LLM | ≤ 15% | Most emails decided by the model |
+| Hybrid design | Emails falling back to rules | ≤ 1% | Detects a failing LLM |
+| Operations | Latency p95, model path / LLM path | ≤ 300 ms / ≤ 3 s | Responsiveness |
+| Operations | LLM cost per 1,000 emails | ≤ $0.10 | Running cost |
+| Explainability | IG completeness error | ≤ 0.05 | Attributions add up |
+| Explainability | Top-5 comprehensiveness minus random | ≥ 0.10 | Explanations are faithful |
+| Explainability | Explanations beating random (top-5) | ≥ 80% | Faithful for most emails |
+| Explainability | Top-5 sufficiency | ≤ 0.20 | Explained words carry the decision |
+| Explainability | Shortcut words | reviewed by hand | No reliance on dataset artifacts |
+
+Engineering gates in CI: lint clean and test coverage ≥ 80%.
+
+### Results
+
+| KPI | Measured |
 | --- | --- |
-| Accuracy, model alone | _run training_ |
-| F1 (spam), model alone | _run training_ |
-| Confidence band | _run training_ |
-| Share of emails sent to the LLM | _run training_ |
-| Top-5 comprehensiveness vs random words | _run evaluation_ |
-| Top-5 sufficiency | _run evaluation_ |
-| Shortcut candidates found | _run evaluation_ |
+| False positive rate | _run evaluation_ |
+| Spam recall | _run evaluation_ |
+| F1, full system | _run evaluation_ |
+| LLM gain on uncertain emails | _run evaluation_ |
+| Emails sent to the LLM | _run evaluation_ |
+| Top-5 comprehensiveness vs random | _run evaluation_ |
 
-The full explainability report is written to
-[`reports/evaluation.md`](reports/evaluation.md).
+Detailed reports: [`reports/kpis.md`](reports/kpis.md),
+[`reports/explainability.md`](reports/explainability.md),
+[`reports/system.json`](reports/system.json).
 
 ## Quick start
 
@@ -93,9 +114,11 @@ pip install -r requirements.txt -r training/requirements.txt
 python -m training.train
 ```
 
-**Evaluate the explanations** (writes `reports/` and `docs/explanation_example.svg`):
+**Evaluate** quality, LLM routing, latency, cost and explanations against the KPIs
+(writes `reports/` and `docs/explanation_example.svg`):
 ```bash
-python -m evaluation.run --samples 200
+python -m evaluation.run                  # add --no-llm to skip API calls
+python -m evaluation.run --fail-on-miss   # exit code 1 if a KPI misses, for pipelines
 ```
 
 **Run the API locally:**
@@ -171,11 +194,15 @@ training/
   thresholds.py     confidence band selection
   data.py           dataset loading and the shared split
 evaluation/
-  run.py            explainability evaluation on the validation set
+  run.py            one command: system + explainability + KPI report
+  system.py         end-to-end quality, LLM routing, latency, cost
+  kpis.py           KPI definitions, targets, pass/miss report
+  metrics.py        precision, recall, F1, FPR, percentiles, cost
+  explainability.py IG completeness, faithfulness, shortcut audit
   faithfulness.py   ERASER comprehensiveness and sufficiency
   shortcut_audit.py words the model may rely on as shortcuts
   render.py         highlighted-email SVG for the README
-  report.py         Markdown report
+  report.py         explainability Markdown report
 tests/              unit and API tests
 ```
 
