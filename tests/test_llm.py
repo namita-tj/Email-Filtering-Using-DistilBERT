@@ -115,3 +115,20 @@ def test_openai_without_key_fails_fast(monkeypatch):
 def test_unknown_provider_rejected(monkeypatch):
     with pytest.raises(ValueError, match="LLM_PROVIDER"):
         _settings(monkeypatch, LLM_PROVIDER="gemini")
+
+
+def test_token_usage_is_tracked():
+    calls = []
+
+    def create(**kwargs):
+        calls.append(kwargs)
+        message = SimpleNamespace(content='{"label": "spam", "reason": "x"}')
+        usage = SimpleNamespace(prompt_tokens=120, completion_tokens=15)
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=usage)
+
+    client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    llm = LLMClassifier(client, model="m")
+    llm.classify("a", "b")
+    llm.classify("a", "b")  # cached: no new call, no new tokens
+    llm.classify("c", "d")
+    assert llm.usage == {"calls": 2, "prompt_tokens": 240, "completion_tokens": 30}
