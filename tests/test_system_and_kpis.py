@@ -194,4 +194,12 @@ def test_kpi_markdown():
     md = kpis.to_markdown(kpis.evaluate(kpis.collect({"f1_spam": 0.97}, SYSTEM, XAI)))
     assert md.startswith("# KPI report")
     assert "| Quality | Legitimate emails marked as spam | ≤ 1.0% | 0.4% | pass |" in md
-    assert "**13 pass · 1 miss · 1 to review · 0 not measured**" in md
+    assert "**13 pass · 1 miss · 1 to review · 2 not measured**" in md
+
+
+def test_phishing_kpis_are_tracked_for_review():
+    phishing = {"hybrid": {"recall": 0.71, "false_positive_rate": 0.03}}
+    rows = {r["key"]: r for r in kpis.evaluate(kpis.collect(None, None, None, phishing))}
+    assert rows["phishing_recall"]["status"] == "review"
+    assert rows["phishing_recall"]["display"] == "71.0%"
+    assert rows["phishing_false_positive_rate"]["display"] == "3.0%"

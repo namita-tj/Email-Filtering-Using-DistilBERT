@@ -81,5 +81,5 @@ def run_explainability(
     svg = None
     if example:
         svg = render_svg(example["words"], example["pred"], example["p"],
-                         note="Validation email from the TrainingDataPro spam dataset.")
+                         note="Test email from the Enron-Spam dataset.")
     return results, svg

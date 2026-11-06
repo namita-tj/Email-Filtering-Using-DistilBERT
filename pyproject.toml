@@ -17,4 +17,4 @@ pythonpath = ["."]
 [tool.coverage.run]
 source = ["app", "training", "evaluation"]
 # Need TensorFlow, the dataset or a trained model; app/classifier.py is smoke-tested separately.
-omit = ["app/classifier.py", "training/train.py", "training/data.py", "evaluation/run.py"]
+omit = ["app/classifier.py", "training/train.py", "evaluation/run.py"]

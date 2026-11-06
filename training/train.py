@@ -2,8 +2,19 @@
 
 Run from the repository root:  python -m training.train
 
+Dataset: Enron-Spam (see training/data.py). The model is fitted on the train
+split; metrics and the confidence band come from the validation split. The test
+split is left for evaluation/run.py.
+
+Settings (environment variables):
+  MAX_LENGTH   tokens per email (default 256; covers most emails, and is
+               much faster than 512)
+  EPOCHS       default 2; DistilBERT converges quickly on this task
+  TRAIN_LIMIT  use only the first N training emails, for a quick trial run
+
 Writes to MODEL_DIR (default: spam_detection_model/):
   config.json, tf_model.h5, tokenizer files  -> loaded by the API
+  training_config.json                        -> max length, so serving matches training
   metrics.json                                -> validation results
   thresholds.json                             -> confidence band for the LLM fallback
 """
@@ -25,14 +36,20 @@ from training.thresholds import choose_thresholds  # noqa: E402
 
 MODEL_DIR = Path(os.getenv("MODEL_DIR", "spam_detection_model"))
 BASE_MODEL = "distilbert-base-uncased"
-MAX_LENGTH = 512
+MAX_LENGTH = int(os.getenv("MAX_LENGTH", "256"))
 BATCH_SIZE = 16
-EPOCHS = 5
+EPOCHS = int(os.getenv("EPOCHS", "2"))
+TRAIN_LIMIT = int(os.getenv("TRAIN_LIMIT", "0"))
 LEARNING_RATE = 5e-5
 TARGET_PRECISION = 0.99
 
 
 dataset = load_splits()
+if TRAIN_LIMIT:
+    dataset["train"] = dataset["train"].shuffle(seed=SEED).select(
+        range(min(TRAIN_LIMIT, len(dataset["train"])))
+    )
+print({name: len(split) for name, split in dataset.items()})
 
 labels = [ex["label"] for ex in dataset["train"]]
 weights = compute_class_weight("balanced", classes=np.unique(labels), y=labels)
@@ -51,7 +68,7 @@ tokenized = dataset.map(tokenize, batched=True)
 tf_train = tokenized["train"].shuffle(seed=SEED).to_tf_dataset(
     columns=["input_ids", "attention_mask"], label_cols=["label"], batch_size=BATCH_SIZE, shuffle=True
 )
-tf_val = tokenized["test"].to_tf_dataset(
+tf_val = tokenized["validation"].to_tf_dataset(
     columns=["input_ids", "attention_mask"], label_cols=["label"], batch_size=BATCH_SIZE, shuffle=False
 )
 
@@ -82,6 +99,8 @@ print(
 )
 
 metrics = {
+    "dataset": "SetFit/enron_spam",
+    "train_size": len(dataset["train"]),
     "validation_size": int(len(y_true)),
     "accuracy": float((y_pred == y_true).mean()),
     "f1_spam": float(f1_score(y_true, y_pred)),
@@ -94,6 +113,9 @@ metrics = {
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
 model.save_pretrained(MODEL_DIR)
 tokenizer.save_pretrained(MODEL_DIR)
+(MODEL_DIR / "training_config.json").write_text(
+    json.dumps({"base_model": BASE_MODEL, "max_length": MAX_LENGTH, "epochs": EPOCHS}, indent=2)
+)
 (MODEL_DIR / "metrics.json").write_text(json.dumps(metrics, indent=2))
 (MODEL_DIR / "thresholds.json").write_text(json.dumps(thresholds.to_dict(), indent=2))
 

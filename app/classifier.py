@@ -4,13 +4,26 @@ TensorFlow is imported lazily so the rest of the service (and its tests) can run
 without it.
 """
 
+import json
 from pathlib import Path
 
 from app.explain import Explanation, merge_wordpieces
 
+DEFAULT_MAX_LENGTH = 512
+
+
+def trained_max_length(model_dir: Path | str) -> int:
+    """The max length used in training, so serving truncates emails the same way."""
+    path = Path(model_dir) / "training_config.json"
+    if path.is_file():
+        return int(json.loads(path.read_text()).get("max_length", DEFAULT_MAX_LENGTH))
+    return DEFAULT_MAX_LENGTH
+
 
 class DistilBertClassifier:
-    def __init__(self, model_dir: Path | str, max_length: int = 512, tokenizer=None, model=None):
+    def __init__(
+        self, model_dir: Path | str, max_length: int | None = None, tokenizer=None, model=None
+    ):
         import tensorflow as tf
 
         self._tf = tf
@@ -21,7 +34,7 @@ class DistilBertClassifier:
             model = TFAutoModelForSequenceClassification.from_pretrained(model_dir)
         self._tokenizer = tokenizer
         self._model = model
-        self._max_length = max_length
+        self._max_length = max_length or trained_max_length(model_dir)
 
     def _encode(self, text: str):
         return self._tokenizer(
