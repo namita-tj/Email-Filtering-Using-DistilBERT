@@ -99,6 +99,22 @@ copes with today's phishing.
 | Robustness | Modern phishing caught (out of distribution) | tracked | _pending_ |
 | Robustness | Safe modern emails marked as spam | tracked | _pending_ |
 
+### Baseline (measured)
+
+A TF-IDF + logistic regression baseline (`python -m training.baseline`) sets the
+bar the transformer has to beat. Results on the 2,000-email Enron-Spam test set,
+trained on 28,496 emails in about 20 seconds on a laptop CPU:
+
+| | Accuracy | Precision | Recall | F1 | False positive rate |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Baseline, cut-off 0.5 | 98.80% | 98.33% | 99.31% | 0.988 | 1.71% |
+| Baseline, calibrated cut-off 0.62 | 99.00% | 98.91% | 99.11% | 0.990 | 1.11% |
+| DistilBERT hybrid | _pending_ | _pending_ | _pending_ | _pending_ | _pending_ |
+
+Calibrating the cut-off on the validation split cut false alarms by a third, but
+the baseline still misses the 1% false positive target (11 of about 1,000
+legitimate test emails flagged). Full numbers: [`reports/baseline.json`](reports/baseline.json).
+
 Detailed reports: [`reports/kpis.md`](reports/kpis.md) ·
 [`reports/explainability.md`](reports/explainability.md) ·
 [`reports/system.json`](reports/system.json)
@@ -120,6 +136,11 @@ TRAIN_LIMIT=2000 python -m training.train # quick trial run
 Downloads Enron-Spam from Hugging Face and saves the model, `metrics.json` and
 `thresholds.json` to `spam_detection_model/`. `MAX_LENGTH` (default 256 tokens)
 and `EPOCHS` (default 2) can be set the same way.
+
+**Baseline** (optional, CPU, under a minute):
+```bash
+python -m training.baseline
+```
 
 **2. Evaluate** against the KPIs (writes `reports/` and the README image):
 ```bash
@@ -224,6 +245,7 @@ training/
   train.py          fine-tuning, metrics, threshold selection
   thresholds.py     confidence band selection
   data.py           Enron-Spam and phishing loaders, train/validation/test split
+  baseline.py       TF-IDF + logistic regression baseline
 evaluation/
   run.py            one command: system + explainability + KPI report
   system.py         end-to-end quality, LLM routing, latency, cost
@@ -246,7 +268,7 @@ AWS S3 · Docker · GitHub Actions · pytest · Ruff
 
 | Use | Dataset | Size | Notes |
 | --- | --- | ---: | --- |
-| Train, validation, test | [Enron-Spam](https://huggingface.co/datasets/SetFit/enron_spam) (Metsis et al., 2006) | 31.7k train, 2k test | Real spam and business email with subject and body. 10% of the train split is held out for validation. |
+| Train, validation, test | [Enron-Spam](https://huggingface.co/datasets/SetFit/enron_spam) (Metsis et al., 2006) | 31.7k train, 2k test | Real spam and business email with subject and body. 10% of the train split is held out for validation. Also available as a CSV from [MWiechmann/enron_spam_data](https://github.com/MWiechmann/enron_spam_data) (GPL-3.0): `python -m training.baseline --enron-csv enron_spam_data.csv`. |
 | Out-of-distribution test | [Phishing Email Detection](https://huggingface.co/datasets/zefang-liu/phishing-email-dataset) (Kaggle, mirrored on Hugging Face) | 18.7k | Modern phishing and safe emails, body only. Never used for training. LGPL-3.0. |
 
 Empty emails and placeholder texts such as "empty" or "null" are removed, and

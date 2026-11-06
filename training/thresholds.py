@@ -65,8 +65,9 @@ def choose_thresholds(
     if not calibrated:
         low, high = DEFAULT_LOW, DEFAULT_HIGH
     elif low >= high:
-        # The model is confident everywhere: no uncertain band is needed.
-        low = high = 0.5
+        # The safe ranges overlap, so no uncertain band is needed. Any cut-off in
+        # [high, low] meets the target on both sides; take the middle of it.
+        low = high = (low + high) / 2
 
     return Thresholds(
         low=round(low, 4),

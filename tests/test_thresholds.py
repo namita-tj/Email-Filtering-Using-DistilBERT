@@ -25,6 +25,16 @@ def test_perfectly_separated_data_sends_nothing_to_llm():
     assert (t.low, t.high, t.uncertain_share) == (0.1, 0.9, 0.0)
 
 
+def test_overlapping_safe_ranges_use_a_cut_off_inside_both():
+    # Spam is precise enough from 0.4 up, ham pure enough up to 0.6: the ranges overlap.
+    probs = [0.1] * 100 + [0.4, 0.6] + [0.9] * 100
+    labels = [0] * 100 + [1, 0] + [1] * 100
+    t = choose_thresholds(probs, labels, target=0.98, min_support=10)
+    assert t.calibrated
+    assert t.low == t.high == 0.5
+    assert t.uncertain_share == 0.0
+
+
 def test_too_little_data_uses_defaults():
     t = choose_thresholds([0.2, 0.8], [0, 1], min_support=10)
     assert not t.calibrated
