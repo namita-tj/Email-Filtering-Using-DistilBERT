@@ -5,9 +5,15 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-2.18-orange)
 
-A hybrid spam filter served as a REST API. A fine-tuned DistilBERT model decides
-the clear cases. Emails it is unsure about go to an LLM (Azure OpenAI or OpenAI)
-for a second opinion, and keyword rules take over if the LLM is unavailable.
+A hybrid, explainable spam filter served as a REST API. A fine-tuned DistilBERT
+model decides the clear cases. Emails it is unsure about go to an LLM (Azure
+OpenAI or OpenAI) for a second opinion, and keyword rules take over if the LLM is
+unavailable. Every model decision can be explained word by word, and the
+explanations are tested for faithfulness.
+
+<p align="center">
+  <img src="docs/explanation_example.svg" alt="An email with each word highlighted by how much it pushed the model towards spam (red) or ham (blue)" width="760">
+</p>
 
 ## How it works
 
@@ -30,6 +36,31 @@ flowchart LR
   an email as spam.
 - **Same preprocessing in training and serving.** Both use `app/preprocessing.py`.
 
+## Explainability
+
+**Integrated Gradients** (Sundararajan et al., 2017) attributes the spam
+probability to each word, by integrating gradients along a path from a
+neutral input (all words replaced by `[PAD]`) to the real email. Sub-word
+tokens are merged back into words. Ask for it with `/predict?explain=true`.
+It costs a few dozen extra forward and backward passes, so it is off by default.
+
+Attention weights are deliberately not used as explanations: they show where
+the model looks, not what changes its answer.
+
+**Are the explanations true?** `python -m evaluation.run` checks them instead of
+trusting them:
+
+- **Completeness.** IG attributions must add up to the change in probability.
+  The gap is reported as `convergence_delta` on every explanation.
+- **Faithfulness** (ERASER deletion tests, DeYoung et al., 2020). Removing the
+  top-k words should make the prediction collapse (comprehensiveness), and
+  keeping only them should preserve it (sufficiency). Both are compared with
+  removing k random words.
+- **Shortcut audit.** Attributions are aggregated over the validation set to
+  find words the model leans on that may not generalise: words found in only
+  one class of this dataset, or stopwords and fragments among the most
+  influential words. Flagged words are reviewed by hand.
+
 ## Results
 
 Filled in by `python -m training.train`, which writes `metrics.json` and
@@ -41,6 +72,12 @@ Filled in by `python -m training.train`, which writes `metrics.json` and
 | F1 (spam), model alone | _run training_ |
 | Confidence band | _run training_ |
 | Share of emails sent to the LLM | _run training_ |
+| Top-5 comprehensiveness vs random words | _run evaluation_ |
+| Top-5 sufficiency | _run evaluation_ |
+| Shortcut candidates found | _run evaluation_ |
+
+The full explainability report is written to
+[`reports/evaluation.md`](reports/evaluation.md).
 
 ## Quick start
 
@@ -54,6 +91,11 @@ cp .env.example .env          # add your credentials
 ```bash
 pip install -r requirements.txt -r training/requirements.txt
 python -m training.train
+```
+
+**Evaluate the explanations** (writes `reports/` and `docs/explanation_example.svg`):
+```bash
+python -m evaluation.run --samples 200
 ```
 
 **Run the API locally:**
@@ -77,14 +119,20 @@ curl -X POST http://localhost:8000/predict \
 ```
 Response shape (values depend on your trained model):
 ```json
-{"label": "spam", "source": "llm", "spam_probability": 0.62, "reason": "Credential phishing attempt."}
+{"label": "spam", "source": "llm", "spam_probability": 0.62, "reason": "Credential phishing attempt.", "explanation": null}
+```
+
+With `?explain=true&top_k=3`, `explanation` holds the most influential words:
+```json
+{"method": "integrated_gradients", "spam_probability": 0.62, "convergence_delta": 0.004,
+ "words": [{"word": "verify", "weight": 0.21}, {"word": "password", "weight": 0.17}, {"word": "hours", "weight": 0.06}]}
 ```
 
 ## API
 
 | Method | Path | Description |
 | --- | --- | --- |
-| POST | `/predict` | Body `{"subject": "...", "text": "..."}`. Returns `label`, `source`, `spam_probability`, `reason`. |
+| POST | `/predict` | Body `{"subject": "...", "text": "..."}`. Returns `label`, `source`, `spam_probability`, `reason`. Query `explain=true` adds word attributions, `top_k` (1-50) sets how many. |
 | GET | `/health` | Readiness, thresholds, and whether the LLM fallback is on. |
 
 ## Configuration
@@ -111,7 +159,8 @@ the Docker image and publishes it to GitHub Container Registry on `main`.
 app/
   main.py           FastAPI app: /predict, /health
   pipeline.py       model -> LLM -> rules decision chain
-  classifier.py     DistilBERT inference
+  classifier.py     DistilBERT inference and Integrated Gradients
+  explain.py        word-level explanations
   llm.py            Azure OpenAI / OpenAI fallback
   rules.py          keyword rules
   model_store.py    local model or S3 download
@@ -120,6 +169,13 @@ app/
 training/
   train.py          fine-tuning, metrics, threshold selection
   thresholds.py     confidence band selection
+  data.py           dataset loading and the shared split
+evaluation/
+  run.py            explainability evaluation on the validation set
+  faithfulness.py   ERASER comprehensiveness and sufficiency
+  shortcut_audit.py words the model may rely on as shortcuts
+  render.py         highlighted-email SVG for the README
+  report.py         Markdown report
 tests/              unit and API tests
 ```
 

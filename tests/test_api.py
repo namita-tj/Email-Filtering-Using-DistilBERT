@@ -39,6 +39,7 @@ def test_predict_model_decision(client_for):
         "source": "model",
         "spam_probability": 0.97,
         "reason": None,
+        "explanation": None,
     }
 
 
@@ -65,3 +66,33 @@ def test_internal_errors_are_not_leaked(client_for):
     response = client.post("/predict", json={"text": "hello"})
     assert response.status_code == 500
     assert response.json() == {"detail": "Internal server error"}
+
+
+def test_explain_flag_adds_word_weights(fake_explainable_model):
+    client = TestClient(create_app(SpamFilter(fake_explainable_model(0.9))))
+    response = client.post(
+        "/predict?explain=true&top_k=2",
+        json={"subject": "Verify", "text": "your account now please"},
+    )
+    assert response.status_code == 200
+    explanation = response.json()["explanation"]
+    assert explanation["method"] == "integrated_gradients"
+    assert explanation["words"] == [
+        {"word": "Verify", "weight": 0.4},
+        {"word": "please", "weight": -0.2},
+    ]
+
+
+def test_explanation_is_off_by_default(fake_explainable_model):
+    client = TestClient(create_app(SpamFilter(fake_explainable_model(0.9))))
+    assert client.post("/predict", json={"text": "hello"}).json()["explanation"] is None
+
+
+def test_explain_unavailable_returns_501(client_for):
+    response = client_for().post("/predict?explain=true", json={"text": "hello"})
+    assert response.status_code == 501
+
+
+def test_top_k_is_bounded(fake_explainable_model):
+    client = TestClient(create_app(SpamFilter(fake_explainable_model(0.9))))
+    assert client.post("/predict?explain=true&top_k=0", json={"text": "hi"}).status_code == 422
