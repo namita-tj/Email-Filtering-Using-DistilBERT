@@ -45,6 +45,7 @@ newer training data, and a bigger model won't make up for that.
 </p>
 <p align="center"><sub>A real explanation from the trained model. Red words pushed it towards spam, blue towards ham.
 You can see a lot of weight landing on everyday words like <i>you</i> and <i>the</i>, which matches what the faithfulness tests found.</sub></p>
+
 ## The numbers
  
 Every model was scored on the same emails: the 2,000-email Enron-Spam test set, and 2,000
@@ -103,6 +104,7 @@ The full reports are in [`reports/`](reports): [KPIs](reports/kpis.md),
 [training metrics](reports/model/metrics.json).
  
 </details>
+
 ## How it works
  
 An email goes to DistilBERT first. If the spam probability is clearly high or clearly low, that's
@@ -223,6 +225,7 @@ tests/        unit and API tests
 ```
  
 </details>
+
 ## Data
  
 The models are trained on [Enron-Spam](https://huggingface.co/datasets/SetFit/enron_spam)
