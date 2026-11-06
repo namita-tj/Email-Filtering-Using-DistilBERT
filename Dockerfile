@@ -28,4 +28,4 @@ COPY . .
 EXPOSE 5000
 
 # Run app
-CMD ["python", "app.py"]
+CMD ["python", "app/main.py"]

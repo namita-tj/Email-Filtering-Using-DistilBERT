@@ -35,7 +35,7 @@ Key Features:
 
   ## 📦 Installation
 ```bash
-git clone https://github.com/your-repo/Email-Filtering-Using-DistilBERT
+git clone https://github.com/namita-tj/Email-Filtering-Using-DistilBERT
 cd Email-Filtering-Using-DistilBERT
 pip install -r requirements.txt
 ```
@@ -43,12 +43,13 @@ pip install -r requirements.txt
 ## 🚀 Usage
 Training the Model
 ```bash
-python model.py
+pip install -r training/requirements.txt
+python training/train.py
   ```
 
 Running the API
 ```bash
-python app.py
+python app/main.py
 ```
 Then visit http://localhost:8080/docs for interactive docs.
 
