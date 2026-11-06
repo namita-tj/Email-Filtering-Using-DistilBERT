@@ -1,73 +1,133 @@
-# 📧 Email Filtering System using DistilBERT
+# Email Filtering Using DistilBERT
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.12%2B-orange)
-![Transformers](https://img.shields.io/badge/🤗_Transformers-4.30%2B-yellow)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.95%2B-green)
+![CI](https://github.com/namita-tj/Email-Filtering-Using-DistilBERT/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/Python-3.10-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-2.18-orange)
 
-## 🌟 Overview
-A hybrid spam detection system combining:
-- **DistilBERT** for deep learning classification
-- **Rule-based checks** for common spam patterns
-- **GPT-3.5 fallback** for low-confidence predictions
-- **FastAPI** REST endpoint for production deployment
+A hybrid spam filter served as a REST API. A fine-tuned DistilBERT model decides
+the clear cases. Emails it is unsure about go to an LLM (Azure OpenAI or OpenAI)
+for a second opinion, and keyword rules take over if the LLM is unavailable.
 
-## 🛠️ Core Components
+## How it works
 
-### 1. Model Training (`model.py`)
+```mermaid
+flowchart LR
+    A[POST /predict] --> B[DistilBERT<br/>spam probability p]
+    B -->|p >= high| S[spam · source=model]
+    B -->|p <= low| H[ham · source=model]
+    B -->|low < p < high| C{LLM configured<br/>and reachable?}
+    C -->|yes| L[LLM label + reason<br/>source=llm]
+    C -->|no / error| R[Keyword rules<br/>source=rules]
+```
 
-Key Features:
-- Uses DistilBERT (lightweight BERT variant)
-- Processes email text with regex cleaning
-- Handles class imbalance with sklearn's class_weight
-- Saves TensorFlow SavedModel format
+- **Confidence band.** `low` and `high` are chosen during training on the
+  validation set, so that the model's own decisions reach 99% precision for
+  spam and 99% for ham. Only the remaining share of emails costs an LLM call.
+- **LLM fallback.** Structured JSON output, temperature 0, timeout and retries,
+  and an in-memory cache, so a repeated email is never paid for twice.
+- **Rules.** A small set of phishing and scam patterns. Two or more matches mark
+  an email as spam.
+- **Same preprocessing in training and serving.** Both use `app/preprocessing.py`.
 
+## Results
 
-### 2. Prediction API (app.py)
-Key Features:
-- FastAPI endpoint with /predict route
-- Hybrid decision system:
-  1. DistilBERT primary prediction
-  2. GPT-3.5 fallback for uncertain cases
-  3. Rule-based keyword matching as backup
-- Cached LLM queries with @lru_cache
-- Detailed logging and health checks
+Filled in by `python -m training.train`, which writes `metrics.json` and
+`thresholds.json` next to the model.
 
-  ## 📦 Installation
+| Metric (validation set) | Value |
+| --- | --- |
+| Accuracy, model alone | _run training_ |
+| F1 (spam), model alone | _run training_ |
+| Confidence band | _run training_ |
+| Share of emails sent to the LLM | _run training_ |
+
+## Quick start
+
 ```bash
 git clone https://github.com/namita-tj/Email-Filtering-Using-DistilBERT
 cd Email-Filtering-Using-DistilBERT
-pip install -r requirements.txt
+cp .env.example .env          # add your credentials
 ```
 
-## 🚀 Usage
-Training the Model
+**Train the model** (GPU recommended):
 ```bash
-pip install -r training/requirements.txt
-python training/train.py
-  ```
+pip install -r requirements.txt -r training/requirements.txt
+python -m training.train
+```
 
-Running the API
+**Run the API locally:**
 ```bash
-python app/main.py
-```
-Then visit http://localhost:8080/docs for interactive docs.
-
-## 🔧 Configuration
-Add to .env:
-```ini
-OPENAI_API_KEY=sk-your-key-here  # For GPT-3.5 fallback
+uvicorn app.main:app --reload
 ```
 
-## 📂 File Structure
-```
-.
-├── app.py                    # FastAPI application
-├── model.py         # Model training script
-├── spam_detection_model/     # Saved TensorFlow model
-├── requirements.txt          # Python dependencies
-└── README.md                # This file
+**Or with Docker:**
+```bash
+docker compose up --build
 ```
 
-## 📜 License
-MIT License - For research and educational use only.
+Interactive docs: http://localhost:8000/docs
+
+### Example
+
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"subject": "Account locked", "text": "Verify your password within 24 hours."}'
+```
+Response shape (values depend on your trained model):
+```json
+{"label": "spam", "source": "llm", "spam_probability": 0.62, "reason": "Credential phishing attempt."}
+```
+
+## API
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/predict` | Body `{"subject": "...", "text": "..."}`. Returns `label`, `source`, `spam_probability`, `reason`. |
+| GET | `/health` | Readiness, thresholds, and whether the LLM fallback is on. |
+
+## Configuration
+
+All settings are environment variables; see [`.env.example`](.env.example).
+The model is loaded from `MODEL_DIR`, or downloaded from `S3_BUCKET` if the
+folder is empty. The LLM provider is picked from the credentials you set, or
+forced with `LLM_PROVIDER=azure|openai|none`.
+
+## Development
+
+```bash
+pip install -r requirements-dev.txt   # no TensorFlow needed
+ruff check .
+pytest --cov
+```
+
+GitHub Actions runs lint and tests on every push and pull request, then builds
+the Docker image and publishes it to GitHub Container Registry on `main`.
+
+## Project structure
+
+```
+app/
+  main.py           FastAPI app: /predict, /health
+  pipeline.py       model -> LLM -> rules decision chain
+  classifier.py     DistilBERT inference
+  llm.py            Azure OpenAI / OpenAI fallback
+  rules.py          keyword rules
+  model_store.py    local model or S3 download
+  preprocessing.py  text cleaning shared with training
+  config.py         settings and thresholds
+training/
+  train.py          fine-tuning, metrics, threshold selection
+  thresholds.py     confidence band selection
+tests/              unit and API tests
+```
+
+## Dataset
+
+[TrainingDataPro/email-spam-classification](https://huggingface.co/datasets/TrainingDataPro/email-spam-classification)
+on Hugging Face, split 80/20 into training and validation.
+
+## License
+
+MIT

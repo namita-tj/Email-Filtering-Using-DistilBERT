@@ -1,6 +1,9 @@
-# API runtime
-flask==3.1.0
+# API runtime (used by the Docker image)
+fastapi==0.115.6
+uvicorn==0.34.0
+pydantic==2.10.6
+openai==1.59.7
+boto3==1.37.9
 tensorflow==2.18.0
 tf_keras==2.18.0
 transformers==4.49.0
-boto3==1.37.9

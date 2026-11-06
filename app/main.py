@@ -1,51 +1,112 @@
-import boto3
-import os
-import tensorflow as tf
-from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
-from flask import Flask, request, jsonify
+"""FastAPI service for the hybrid spam filter.
 
-S3_BUCKET_NAME = "spam-detection-model-storage"
-MODEL_DIR = "spam_detection_model"
+Run locally:  uvicorn app.main:app --reload
+Docs:         http://localhost:8000/docs
+"""
 
-os.makedirs(MODEL_DIR, exist_ok=True)
+import logging
+from contextlib import asynccontextmanager
 
-if not os.path.exists(f"{MODEL_DIR}/tf_model.h5"):
-    print("Downloading model from S3...")
-    s3 = boto3.client("s3")
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, field_validator
 
-    for obj in s3.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=MODEL_DIR)["Contents"]:
-        file_path = obj["Key"]
-        local_path = os.path.join(MODEL_DIR, file_path.split("/")[-1])
-        s3.download_file(S3_BUCKET_NAME, file_path, local_path)
+from app.config import Settings, load_thresholds
+from app.pipeline import SpamFilter
 
-    print("Model downloaded successfully!")
+logger = logging.getLogger("email_filter")
 
-model = TFAutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
-tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
 
-app = Flask(__name__)
+class PredictRequest(BaseModel):
+    subject: str = Field(default="", max_length=1000, description="Email subject line")
+    text: str = Field(min_length=1, max_length=20000, description="Email body")
 
-@app.route("/")
-def home():
-    return jsonify({"message": "Spam Detection API is running!"})
+    @field_validator("text")
+    @classmethod
+    def text_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("text must not be blank")
+        return value
 
-@app.route("/predict", methods=["POST"])
-def predict():
-    try:
-        data = request.json
-        email_text = data.get("text", "")
 
-        if not email_text:
-            return jsonify({"error": "No email text provided"}), 400
+class PredictResponse(BaseModel):
+    label: str = Field(description="spam or ham")
+    source: str = Field(description="Which stage decided: model, llm or rules")
+    spam_probability: float = Field(description="DistilBERT spam probability")
+    reason: str | None = Field(default=None, description="Explanation from the LLM or rules")
 
-        inputs = tokenizer(email_text, return_tensors="tf", padding="max_length", truncation=True, max_length=512)
-        logits = model(inputs["input_ids"]).logits
-        prediction = tf.argmax(logits, axis=1).numpy()[0]
 
-        return jsonify({"prediction": "spam" if prediction == 1 else "ham"})
+def build_spam_filter(settings: Settings) -> SpamFilter:
+    from app.classifier import DistilBertClassifier
+    from app.llm import build_llm_classifier
+    from app.model_store import ensure_model
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    ensure_model(settings.model_dir, settings.s3_bucket, settings.s3_prefix)
+    low, high = load_thresholds(settings)
+    return SpamFilter(
+        model=DistilBertClassifier(settings.model_dir),
+        llm=build_llm_classifier(settings),
+        low=low,
+        high=high,
+    )
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+
+def create_app(spam_filter: SpamFilter | None = None) -> FastAPI:
+    """`spam_filter` is injected in tests; in production it is built at startup."""
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        if app.state.spam_filter is None:
+            settings = Settings.from_env()
+            logging.basicConfig(
+                level=settings.log_level,
+                format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            )
+            app.state.spam_filter = build_spam_filter(settings)
+            logger.info("Spam filter ready")
+        yield
+
+    app = FastAPI(
+        title="Email Filtering API",
+        description="DistilBERT spam classifier with an LLM fallback for uncertain emails.",
+        version="2.0.0",
+        lifespan=lifespan,
+    )
+    app.state.spam_filter = spam_filter
+
+    @app.exception_handler(Exception)
+    async def unhandled_error(request: Request, exc: Exception):
+        logger.exception("Unhandled error on %s", request.url.path)
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+    @app.get("/health")
+    def health():
+        spam_filter = app.state.spam_filter
+        if spam_filter is None:
+            return JSONResponse(status_code=503, content={"status": "loading"})
+        return {
+            "status": "ok",
+            "llm_fallback": spam_filter.llm is not None,
+            "thresholds": {"low": spam_filter.low, "high": spam_filter.high},
+        }
+
+    @app.post("/predict", response_model=PredictResponse)
+    def predict(request: PredictRequest) -> PredictResponse:
+        prediction = app.state.spam_filter.classify(request.subject, request.text)
+        logger.info(
+            "label=%s source=%s p=%.3f",
+            prediction.label,
+            prediction.source,
+            prediction.spam_probability,
+        )
+        return PredictResponse(
+            label=prediction.label,
+            source=prediction.source,
+            spam_probability=round(prediction.spam_probability, 4),
+            reason=prediction.reason,
+        )
+
+    return app
+
+
+app = create_app()

@@ -1,5 +1,4 @@
-# Training only (install on top of ../requirements.txt)
+# Training only. Install on top of ../requirements.txt
 datasets==3.3.2
 scikit-learn==1.6.1
 numpy==1.26.4
-nltk==3.9.1

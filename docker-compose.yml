@@ -1,16 +1,14 @@
-version: "3.9"
-
 services:
   email-filter:
     build: .
+    image: email-filter-api
     container_name: email-filter-api
     ports:
-      - "5000:5000"
-    environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - "8000:8000"
+    env_file: .env
     volumes:
+      # Keeps the downloaded model between restarts. To use a locally trained
+      # model instead, replace with: ./spam_detection_model:/app/spam_detection_model:ro
       - model_data:/app/spam_detection_model
     restart: unless-stopped
 

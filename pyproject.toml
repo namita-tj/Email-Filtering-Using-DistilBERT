@@ -1,0 +1,20 @@
+[project]
+name = "email-filtering-using-distilbert"
+version = "2.0.0"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "N", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["app", "training"]
+# Need TensorFlow and a trained model: exercised by the Docker smoke test, not unit tests.
+omit = ["app/classifier.py", "training/train.py"]
