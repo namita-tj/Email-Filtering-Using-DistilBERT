@@ -1,0 +1,172 @@
+[
+  {
+    "key": "false_positive_rate",
+    "group": "Quality",
+    "name": "Legitimate emails marked as spam",
+    "target": "\u2264 1.0%",
+    "value": 0.009072580645161291,
+    "display": "0.9%",
+    "status": "pass",
+    "why": "Losing a real email is the costliest error."
+  },
+  {
+    "key": "spam_recall",
+    "group": "Quality",
+    "name": "Spam caught (recall)",
+    "target": "\u2265 95.0%",
+    "value": 0.9920634920634921,
+    "display": "99.2%",
+    "status": "pass",
+    "why": "Share of spam that never reaches the inbox."
+  },
+  {
+    "key": "f1",
+    "group": "Quality",
+    "name": "F1 score, spam",
+    "target": "\u2265 95.0%",
+    "value": 0.9915716410510661,
+    "display": "99.2%",
+    "status": "pass",
+    "why": "Balance of precision and recall."
+  },
+  {
+    "key": "model_f1",
+    "group": "Quality",
+    "name": "F1 score, model alone",
+    "target": "\u2265 95.0%",
+    "value": 0.9945320038597619,
+    "display": "99.5%",
+    "status": "pass",
+    "why": "The fine-tuned model must be strong without help."
+  },
+  {
+    "key": "llm_uplift",
+    "group": "Hybrid design",
+    "name": "Accuracy gain from the LLM on uncertain emails",
+    "target": "\u2265 +0.0 pp",
+    "value": null,
+    "display": "\u2013",
+    "status": "not measured",
+    "why": "The LLM must beat the model where it is routed, or it is wasted cost."
+  },
+  {
+    "key": "llm_share",
+    "group": "Hybrid design",
+    "name": "Emails sent to the LLM",
+    "target": "\u2264 15.0%",
+    "value": 0.0,
+    "display": "0.0%",
+    "status": "pass",
+    "why": "Keeps cost and latency low: most emails are decided by the model."
+  },
+  {
+    "key": "rules_share",
+    "group": "Hybrid design",
+    "name": "Emails falling back to rules",
+    "target": "\u2264 1.0%",
+    "value": 0.0,
+    "display": "0.0%",
+    "status": "pass",
+    "why": "High values mean the LLM is failing or not configured."
+  },
+  {
+    "key": "latency_p95_model",
+    "group": "Operations",
+    "name": "Latency p95, model path",
+    "target": "\u2264 300 ms",
+    "value": 164.8,
+    "display": "165 ms",
+    "status": "pass",
+    "why": "Most requests take this path."
+  },
+  {
+    "key": "latency_p95_llm",
+    "group": "Operations",
+    "name": "Latency p95, LLM path",
+    "target": "\u2264 3000 ms",
+    "value": null,
+    "display": "\u2013",
+    "status": "not measured",
+    "why": "Uncertain emails can wait a little longer."
+  },
+  {
+    "key": "cost_per_1000",
+    "group": "Operations",
+    "name": "LLM cost per 1,000 emails",
+    "target": "\u2264 $0.1000",
+    "value": 0.0,
+    "display": "$0.0000",
+    "status": "pass",
+    "why": "Running cost of the fallback."
+  },
+  {
+    "key": "ig_convergence_delta",
+    "group": "Explainability",
+    "name": "IG completeness error (mean)",
+    "target": "\u2264 0.050",
+    "value": 0.1589111941085918,
+    "display": "0.159",
+    "status": "miss",
+    "why": "Attributions must add up to the model's change in probability."
+  },
+  {
+    "key": "faithfulness_gap",
+    "group": "Explainability",
+    "name": "Top-5 comprehensiveness minus random",
+    "target": "\u2265 0.100",
+    "value": 0.0089,
+    "display": "0.009",
+    "status": "miss",
+    "why": "Removing the explained words must hurt far more than removing random ones."
+  },
+  {
+    "key": "beats_random_share",
+    "group": "Explainability",
+    "name": "Explanations beating random (top-5)",
+    "target": "\u2265 80.0%",
+    "value": 0.57,
+    "display": "57.0%",
+    "status": "miss",
+    "why": "Faithful for most emails, not just on average."
+  },
+  {
+    "key": "sufficiency",
+    "group": "Explainability",
+    "name": "Top-5 sufficiency (probability drop)",
+    "target": "\u2264 0.200",
+    "value": 0.0917,
+    "display": "0.092",
+    "status": "pass",
+    "why": "The explained words alone should nearly keep the prediction."
+  },
+  {
+    "key": "shortcut_candidates",
+    "group": "Explainability",
+    "name": "Shortcut words to review",
+    "target": "review",
+    "value": 12,
+    "display": "12",
+    "status": "review",
+    "why": "Each flagged word is checked by hand before release."
+  },
+  {
+    "key": "phishing_recall",
+    "group": "Robustness",
+    "name": "Modern phishing caught (out of distribution)",
+    "target": "review",
+    "value": 0.9960988296488946,
+    "display": "99.6%",
+    "status": "review",
+    "why": "Spam has changed since the Enron era; this shows how much that matters."
+  },
+  {
+    "key": "phishing_false_positive_rate",
+    "group": "Robustness",
+    "name": "Safe modern emails marked as spam",
+    "target": "review",
+    "value": 0.36636880584890336,
+    "display": "36.6%",
+    "status": "review",
+    "why": "False alarms on present-day legitimate email."
+  }
+]

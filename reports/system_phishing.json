@@ -1,0 +1,69 @@
+{
+  "emails": 2000,
+  "thresholds": {
+    "low": 0.5707,
+    "high": 0.5707
+  },
+  "llm_enabled": true,
+  "model_alone": {
+    "n": 2000,
+    "tp": 766,
+    "fp": 460,
+    "tn": 771,
+    "fn": 3,
+    "accuracy": 0.7685,
+    "precision": 0.6247960848287113,
+    "recall": 0.9960988296488946,
+    "f1": 0.7679197994987469,
+    "false_positive_rate": 0.3736799350121852
+  },
+  "hybrid": {
+    "n": 2000,
+    "tp": 766,
+    "fp": 451,
+    "tn": 780,
+    "fn": 3,
+    "accuracy": 0.773,
+    "precision": 0.6294165981922761,
+    "recall": 0.9960988296488946,
+    "f1": 0.771399798590131,
+    "false_positive_rate": 0.36636880584890336
+  },
+  "routing": {
+    "model_share": 1.0,
+    "llm_share": 0.0,
+    "rules_share": 0.0
+  },
+  "uncertain_emails": {
+    "count": 0,
+    "model_accuracy": null,
+    "hybrid_accuracy": null,
+    "uplift": null
+  },
+  "latency": {
+    "model": {
+      "count": 2000,
+      "p50_ms": 113.3,
+      "p95_ms": 164.6
+    },
+    "llm": {
+      "count": 0,
+      "p50_ms": 0.0,
+      "p95_ms": 0.0
+    },
+    "rules": {
+      "count": 0,
+      "p50_ms": 0.0,
+      "p95_ms": 0.0
+    }
+  },
+  "llm_usage": {
+    "calls": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "input_price_per_million": 0.15,
+    "output_price_per_million": 0.6,
+    "total_cost_usd": 0.0,
+    "cost_per_1000_emails_usd": 0.0
+  }
+}

@@ -6,6 +6,8 @@ requires-python = ">=3.10"
 [tool.ruff]
 line-length = 110
 target-version = "py310"
+# Colab notebooks: shell commands and step-by-step cells, not library code.
+extend-exclude = ["notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "N", "UP"]

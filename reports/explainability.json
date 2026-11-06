@@ -1,0 +1,372 @@
+{
+  "samples": 200,
+  "spam": 100,
+  "ham": 100,
+  "steps": 32,
+  "model": {
+    "accuracy": 0.995,
+    "uncertain_share": 0,
+    "thresholds": {
+      "low": 0.5707,
+      "high": 0.5707
+    },
+    "mean_convergence_delta": 0.1589111941085918
+  },
+  "faithfulness": {
+    "1": {
+      "examples": 200,
+      "comprehensiveness": 0.0062,
+      "random_comprehensiveness": 0.0006,
+      "sufficiency": 0.1838,
+      "beats_random_share": 0.49
+    },
+    "3": {
+      "examples": 200,
+      "comprehensiveness": 0.0115,
+      "random_comprehensiveness": 0.0032,
+      "sufficiency": 0.1332,
+      "beats_random_share": 0.6
+    },
+    "5": {
+      "examples": 200,
+      "comprehensiveness": 0.0185,
+      "random_comprehensiveness": 0.0096,
+      "sufficiency": 0.0917,
+      "beats_random_share": 0.57
+    }
+  },
+  "shortcut_audit": {
+    "words_analysed": 610,
+    "top_spam_words": [
+      {
+        "word": "julie",
+        "emails": 5,
+        "mean_weight": 0.0195,
+        "spam_share": 0.4
+      },
+      {
+        "word": "north",
+        "emails": 5,
+        "mean_weight": 0.0085,
+        "spam_share": 0.2
+      },
+      {
+        "word": "higher",
+        "emails": 5,
+        "mean_weight": 0.0032,
+        "spam_share": 0.6
+      },
+      {
+        "word": "say",
+        "emails": 5,
+        "mean_weight": 0.0025,
+        "spam_share": 0.6
+      },
+      {
+        "word": "technology",
+        "emails": 9,
+        "mean_weight": 0.002,
+        "spam_share": 0.778
+      },
+      {
+        "word": "stock",
+        "emails": 8,
+        "mean_weight": 0.0011,
+        "spam_share": 0.75
+      },
+      {
+        "word": "offers",
+        "emails": 5,
+        "mean_weight": 0.0011,
+        "spam_share": 0.6
+      },
+      {
+        "word": "agent",
+        "emails": 5,
+        "mean_weight": 0.001,
+        "spam_share": 0.6
+      },
+      {
+        "word": "call",
+        "emails": 7,
+        "mean_weight": 0.0008,
+        "spam_share": 0.143
+      },
+      {
+        "word": "page",
+        "emails": 5,
+        "mean_weight": 0.0005,
+        "spam_share": 0.4
+      },
+      {
+        "word": "natural",
+        "emails": 7,
+        "mean_weight": 0.0003,
+        "spam_share": 0.571
+      },
+      {
+        "word": "enhanced",
+        "emails": 5,
+        "mean_weight": 0.0003,
+        "spam_share": 0.8
+      },
+      {
+        "word": "shop",
+        "emails": 5,
+        "mean_weight": 0.0003,
+        "spam_share": 0.8
+      },
+      {
+        "word": "party",
+        "emails": 5,
+        "mean_weight": 0.0002,
+        "spam_share": 0.4
+      },
+      {
+        "word": "america",
+        "emails": 6,
+        "mean_weight": 0.0002,
+        "spam_share": 0.5
+      },
+      {
+        "word": "high",
+        "emails": 17,
+        "mean_weight": 0.0001,
+        "spam_share": 0.647
+      },
+      {
+        "word": "important",
+        "emails": 5,
+        "mean_weight": 0.0001,
+        "spam_share": 0.6
+      },
+      {
+        "word": "world",
+        "emails": 13,
+        "mean_weight": 0.0001,
+        "spam_share": 0.923
+      },
+      {
+        "word": "fast",
+        "emails": 8,
+        "mean_weight": 0.0001,
+        "spam_share": 0.875
+      },
+      {
+        "word": "reply",
+        "emails": 5,
+        "mean_weight": 0.0001,
+        "spam_share": 0.8
+      }
+    ],
+    "top_ham_words": [
+      {
+        "word": "enron",
+        "emails": 46,
+        "mean_weight": -0.1425,
+        "spam_share": 0.0
+      },
+      {
+        "word": "daren",
+        "emails": 7,
+        "mean_weight": -0.127,
+        "spam_share": 0.0
+      },
+      {
+        "word": "hourahead",
+        "emails": 5,
+        "mean_weight": -0.0849,
+        "spam_share": 0.0
+      },
+      {
+        "word": "hpl",
+        "emails": 5,
+        "mean_weight": -0.0565,
+        "spam_share": 0.0
+      },
+      {
+        "word": "vince",
+        "emails": 18,
+        "mean_weight": -0.0524,
+        "spam_share": 0.0
+      },
+      {
+        "word": "kaminski",
+        "emails": 13,
+        "mean_weight": -0.0511,
+        "spam_share": 0.0
+      },
+      {
+        "word": "schedules",
+        "emails": 5,
+        "mean_weight": -0.0429,
+        "spam_share": 0.0
+      },
+      {
+        "word": "schedule",
+        "emails": 8,
+        "mean_weight": -0.0365,
+        "spam_share": 0.125
+      },
+      {
+        "word": "march",
+        "emails": 5,
+        "mean_weight": -0.0291,
+        "spam_share": 0.2
+      },
+      {
+        "word": "meeting",
+        "emails": 14,
+        "mean_weight": -0.0284,
+        "spam_share": 0.0
+      },
+      {
+        "word": "portland",
+        "emails": 5,
+        "mean_weight": -0.0282,
+        "spam_share": 0.0
+      },
+      {
+        "word": "date",
+        "emails": 15,
+        "mean_weight": -0.0262,
+        "spam_share": 0.333
+      },
+      {
+        "word": "october",
+        "emails": 6,
+        "mean_weight": -0.0261,
+        "spam_share": 0.0
+      },
+      {
+        "word": "louise",
+        "emails": 8,
+        "mean_weight": -0.0254,
+        "spam_share": 0.125
+      },
+      {
+        "word": "september",
+        "emails": 6,
+        "mean_weight": -0.0246,
+        "spam_share": 0.167
+      },
+      {
+        "word": "recent",
+        "emails": 7,
+        "mean_weight": -0.0244,
+        "spam_share": 0.857
+      },
+      {
+        "word": "log",
+        "emails": 5,
+        "mean_weight": -0.0217,
+        "spam_share": 0.2
+      },
+      {
+        "word": "contract",
+        "emails": 5,
+        "mean_weight": -0.0204,
+        "spam_share": 0.0
+      },
+      {
+        "word": "questions",
+        "emails": 8,
+        "mean_weight": -0.02,
+        "spam_share": 0.0
+      },
+      {
+        "word": "fw",
+        "emails": 8,
+        "mean_weight": -0.0198,
+        "spam_share": 0.0
+      }
+    ],
+    "shortcut_candidates": [
+      {
+        "word": "enron",
+        "emails": 46,
+        "mean_weight": -0.1425,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      },
+      {
+        "word": "daren",
+        "emails": 7,
+        "mean_weight": -0.127,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      },
+      {
+        "word": "hourahead",
+        "emails": 5,
+        "mean_weight": -0.0849,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      },
+      {
+        "word": "hpl",
+        "emails": 5,
+        "mean_weight": -0.0565,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      },
+      {
+        "word": "vince",
+        "emails": 18,
+        "mean_weight": -0.0524,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      },
+      {
+        "word": "kaminski",
+        "emails": 13,
+        "mean_weight": -0.0511,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      },
+      {
+        "word": "schedules",
+        "emails": 5,
+        "mean_weight": -0.0429,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      },
+      {
+        "word": "meeting",
+        "emails": 14,
+        "mean_weight": -0.0284,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      },
+      {
+        "word": "portland",
+        "emails": 5,
+        "mean_weight": -0.0282,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      },
+      {
+        "word": "october",
+        "emails": 6,
+        "mean_weight": -0.0261,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      },
+      {
+        "word": "contract",
+        "emails": 5,
+        "mean_weight": -0.0204,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      },
+      {
+        "word": "questions",
+        "emails": 8,
+        "mean_weight": -0.02,
+        "spam_share": 0.0,
+        "flag": "class-exclusive"
+      }
+    ],
+    "min_emails": 5
+  }
+}

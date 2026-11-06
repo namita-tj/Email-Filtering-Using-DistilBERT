@@ -1,0 +1,5 @@
+{
+  "base_model": "distilbert-base-uncased",
+  "max_length": 256,
+  "epochs": 2
+}
