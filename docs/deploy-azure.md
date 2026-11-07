@@ -1,7 +1,7 @@
 # Deploying the API on Azure
 
 This puts the spam filter on Azure Container Apps with a public URL, the model in Blob Storage,
-secrets in Key Vault and monitoring in Application Insights. After the one-time setup below, every
+secrets in the container app's encrypted secret store and monitoring in Application Insights. After the one-time setup below, every
 merge to `main` deploys itself through GitHub Actions.
 
 Everything is defined in [`infra/main.bicep`](../infra/main.bicep). The commands are for Windows
@@ -30,7 +30,6 @@ because the container starts, downloads the model and loads TensorFlow.
 az login
 az provider register --namespace Microsoft.App
 az provider register --namespace Microsoft.OperationalInsights
-az provider register --namespace Microsoft.KeyVault
 az bicep install
 ```
 
@@ -140,8 +139,8 @@ download) are in `log-email-filter`, table `ContainerAppConsoleLogs_CL`.
 ## Optional: LLM fallback
 
 Without a key the fallback is off and the model decides alone. With OpenAI credit, add
-`openAiApiKey=sk-...` to the step 5 command. The key goes into Key Vault, and the app reads it
-through its managed identity.
+`openAiApiKey=sk-...` to the step 5 command. The key is stored as a secret of the container app and
+reaches it as an environment variable; it never appears in the deployment outputs.
 
 ## Removing it
 
@@ -149,5 +148,7 @@ through its managed identity.
 az group delete --name rg-email-filter --yes
 ```
 
-Key Vault keeps deleted vaults for 7 days. To redeploy within that week under the same name, purge
-the old vault first: `az keyvault purge --name <vault name>`.
+**Why no Key Vault?** Azure creates the environment as a Container Apps *express* environment,
+which doesn't support Key Vault references for secrets (the deployment fails with
+`ExpressKeyVaultSecretsNotSupported`). The secrets are therefore stored in the app itself. If you
+run this on a standard workload-profiles environment, Key Vault references are the better choice.

@@ -1,7 +1,7 @@
 """Sends request traces, latency and prediction logs to Azure Application Insights.
 
 Switched on only when APPLICATIONINSIGHTS_CONNECTION_STRING is set (the container app
-gets it from Key Vault); locally and in tests nothing changes and the Azure packages are
+gets it from its secret store); locally and in tests nothing changes and the Azure packages are
 not even imported.
 
 What ends up in Application Insights:

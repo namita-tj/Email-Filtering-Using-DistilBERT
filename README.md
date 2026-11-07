@@ -198,8 +198,10 @@ together once, so all of it is code in [`infra/main.bicep`](infra/main.bicep):
   model load.
 - **Blob Storage** holds the trained model. The app downloads it at startup with its own managed
   identity, and the storage account doesn't accept keys at all.
-- **Key Vault** holds the secrets (the Application Insights connection string, and an OpenAI key
-  if the LLM fallback is on). The app reads them through the same identity.
+- **Secrets** (the Application Insights connection string, and an OpenAI key if the LLM fallback is
+  on) live in the container app's encrypted secret store and reach the app as environment variables.
+  I first used Key Vault references, but Azure created a Container Apps *express* environment,
+  which doesn't support them, so the template stores them in the app instead.
 - **Application Insights** gets every request with its latency, plus each prediction's label,
   source and probability, so I can see the p95 latency and how often the LLM or the rules decide
   instead of the model.
