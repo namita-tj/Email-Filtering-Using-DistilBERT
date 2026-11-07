@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.config import Settings, load_thresholds
 from app.pipeline import SpamFilter
+from app.telemetry import setup_telemetry
 
 logger = logging.getLogger("email_filter")
 
@@ -61,7 +62,7 @@ def build_spam_filter(settings: Settings) -> SpamFilter:
     from app.llm import build_llm_classifier
     from app.model_store import ensure_model
 
-    ensure_model(settings.model_dir, settings.s3_bucket, settings.s3_prefix)
+    ensure_model(settings.model_dir, settings.s3_bucket, settings.s3_prefix, blob_url=settings.model_blob_url)
     low, high = load_thresholds(settings)
     return SpamFilter(
         model=DistilBertClassifier(settings.model_dir),
@@ -127,6 +128,13 @@ def create_app(spam_filter: SpamFilter | None = None) -> FastAPI:
             prediction.source,
             prediction.spam_probability,
             explain,
+            # custom dimensions in Application Insights (ignored by plain logging)
+            extra={
+                "label": prediction.label,
+                "source": prediction.source,
+                "spam_probability": round(prediction.spam_probability, 4),
+                "explain": explain,
+            },
         )
 
         explanation = None
@@ -142,6 +150,7 @@ def create_app(spam_filter: SpamFilter | None = None) -> FastAPI:
             explanation=explanation,
         )
 
+    setup_telemetry(app)
     return app
 
 

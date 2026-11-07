@@ -12,7 +12,7 @@ venv/
 # Secrets
 .env
 
-# Trained model (stored in S3, not in git)
+# Trained model (stored in Azure Blob Storage or S3, not in git)
 spam_detection_model/
 
 # Test and lint caches
