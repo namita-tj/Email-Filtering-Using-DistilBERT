@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:  # "Run workflow" button: redeploy main without a new commit
 
 permissions:
   contents: read
@@ -32,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
-        if: github.event_name == 'push'
+        if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -47,8 +48,56 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          push: ${{ github.event_name == 'push' }}
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Deploys the image just built to Azure Container Apps on every push to main.
+  # Signs in with OIDC as the deploy identity from infra/main.bicep: GitHub holds no Azure
+  # password, only the identity's IDs as repository *variables* (Settings > Secrets and
+  # variables > Actions > Variables). Skipped until those variables exist.
+  deploy:
+    needs: docker
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.AZURE_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    # No `environment:` on purpose: it would change the OIDC subject to "environment:<name>",
+    # which no longer matches the federated credential in infra/main.bicep (ref:refs/heads/main).
+    permissions:
+      id-token: write  # OIDC token for azure/login
+      contents: read
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy the new image
+        env:
+          RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+          APP: ${{ vars.AZURE_CONTAINERAPP }}
+        run: |
+          az config set extension.use_dynamic_install=yes_without_prompt
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}:sha-${GITHUB_SHA::7}"
+          echo "Deploying $IMAGE to $APP"
+          az containerapp update --name "$APP" --resource-group "$RG" --image "$IMAGE" --output none
+
+      - name: Smoke test (waits for the cold start)
+        id: smoke
+        env:
+          RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+          APP: ${{ vars.AZURE_CONTAINERAPP }}
+        run: |
+          URL="https://$(az containerapp show --name "$APP" --resource-group "$RG" \
+                --query properties.configuration.ingress.fqdn --output tsv)"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          for i in $(seq 1 30); do
+            if curl -fsS --max-time 30 "$URL/health"; then echo; break; fi
+            echo "waiting for the app to start ($i/30)..."; sleep 10
+          done
+          curl -fsS --max-time 60 -X POST "$URL/predict" -H "Content-Type: application/json" \
+            -d '{"subject": "Team lunch", "text": "Can we move our call to 3pm tomorrow? Thanks!"}'
+          echo
+          echo "Live at $URL/docs" | tee -a "$GITHUB_STEP_SUMMARY"

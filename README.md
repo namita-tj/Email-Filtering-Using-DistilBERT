@@ -150,7 +150,6 @@ of the whole project, since it's what exposed the Enron bias.
 - Try a bigger open model (7–8B) with a few-shot prompt.
 - Run Integrated Gradients with more steps, and measure faithfulness on logits instead of
   probabilities.
-- Put up a small public demo.
 
 ## Try it yourself
 
@@ -187,6 +186,31 @@ The response tells you the label, the spam probability, which stage decided (`mo
 `rules`) and, if you asked for it, the words that mattered most. `GET /health` shows whether the
 model is loaded and whether the LLM fallback is on.
 
+## Running it on Azure
+
+The API also runs in the cloud, on Azure Container Apps (the link is in the repo's About section).
+I wanted the setup to be something a team could actually use, not just a container I clicked
+together once, so all of it is code in [`infra/main.bicep`](infra/main.bicep):
+
+- **Container Apps** runs the Docker image from GitHub Container Registry. It scales to zero when
+  nobody is using it, so it costs next to nothing, with at most one replica. The catch is a cold
+  start: the first request after a quiet period takes a minute or two while TensorFlow and the
+  model load.
+- **Blob Storage** holds the trained model. The app downloads it at startup with its own managed
+  identity, and the storage account doesn't accept keys at all.
+- **Key Vault** holds the secrets (the Application Insights connection string, and an OpenAI key
+  if the LLM fallback is on). The app reads them through the same identity.
+- **Application Insights** gets every request with its latency, plus each prediction's label,
+  source and probability, so I can see the p95 latency and how often the LLM or the rules decide
+  instead of the model.
+- **GitHub Actions** deploys every merge to `main` and then runs a smoke test against the live URL.
+  It signs in to Azure through OpenID Connect, so there's no Azure password stored in GitHub, and
+  the identity it uses can only touch this one resource group.
+- **A budget** emails me well before costs could matter, and log ingestion is capped.
+
+The step-by-step setup, including the monitoring queries, is in
+[`docs/deploy-azure.md`](docs/deploy-azure.md).
+
 <details>
 <summary>Configuration</summary>
 
@@ -195,7 +219,9 @@ Everything is set through environment variables, and [`.env.example`](.env.examp
 | Variable | What it does |
 | --- | --- |
 | `MODEL_DIR` | Folder with the trained model (default `spam_detection_model`) |
-| `S3_BUCKET`, `S3_PREFIX` | Where to download the model from if `MODEL_DIR` is empty |
+| `MODEL_BLOB_URL` | Azure Blob folder to download the model from if `MODEL_DIR` is empty (uses `az login` or a managed identity) |
+| `S3_BUCKET`, `S3_PREFIX` | Same from S3, if `MODEL_BLOB_URL` is not set |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Sends traces, latency and prediction logs to Application Insights; off when empty |
 | `LLM_PROVIDER` | `azure`, `openai` or `none`; picked from the credentials if left empty |
 | `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT` | Azure OpenAI fallback |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | OpenAI fallback (default `gpt-4o-mini`) |
@@ -216,12 +242,15 @@ ruff check .
 pytest --cov
 ```
 
-GitHub Actions runs lint and tests on every push (coverage has to stay above 80%) and publishes
-the Docker image to GitHub Container Registry from `main`.
+GitHub Actions runs lint and tests on every push (coverage has to stay above 80%), publishes
+the Docker image to GitHub Container Registry from `main`, and deploys it to Azure once the
+repository variables from [`docs/deploy-azure.md`](docs/deploy-azure.md) are set.
 
 ```
 app/          the API: decision chain, DistilBERT + Integrated Gradients, LLM fallback,
-              local LLM, keyword rules, model download from S3
+              local LLM, keyword rules, model download (Azure Blob or S3), telemetry
+infra/        the Azure setup as Bicep
+docs/         deploy-azure.md, the cloud setup step by step
 training/     fine-tuning, data loading, the unsure band, TF-IDF baseline, benchmark
 evaluation/   KPIs, end-to-end system test, faithfulness tests, shortcut audit, reports
 notebooks/    the Colab notebooks that produced the results

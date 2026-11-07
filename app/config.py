@@ -19,6 +19,7 @@ def _env(name: str, default: str = "") -> str:
 @dataclass(frozen=True)
 class Settings:
     model_dir: Path
+    model_blob_url: str
     s3_bucket: str
     s3_prefix: str
     low_threshold: float | None
@@ -52,6 +53,7 @@ class Settings:
 
         return cls(
             model_dir=Path(_env("MODEL_DIR", "spam_detection_model")),
+            model_blob_url=_env("MODEL_BLOB_URL"),
             s3_bucket=_env("S3_BUCKET"),
             s3_prefix=_env("S3_PREFIX", "spam_detection_model/"),
             low_threshold=optional_float("LOW_THRESHOLD"),
